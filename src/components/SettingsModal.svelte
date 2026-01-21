@@ -35,7 +35,7 @@
           on:click={closeModal}
           aria-label="Close settings"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
@@ -53,9 +53,8 @@
               value={$settings.theme}
               on:change={(e) => updateSetting('theme', e.currentTarget.value as Theme)}
             >
-              <option value="light">Light</option>
               <option value="dark">Dark</option>
-              <option value="system">System</option>
+              <option value="light">Light</option>
             </select>
           </div>
 
@@ -105,40 +104,6 @@
         </section>
 
         <section class="settings-section">
-          <h3>Editor</h3>
-
-          <div class="setting-row">
-            <label for="focus-mode">Focus Mode</label>
-            <button
-              id="focus-mode"
-              class="toggle"
-              class:active={$settings.focusMode}
-              on:click={() => updateSetting('focusMode', !$settings.focusMode)}
-              role="switch"
-              aria-checked={$settings.focusMode}
-              aria-label="Toggle focus mode"
-            >
-              <span class="toggle-slider"></span>
-            </button>
-          </div>
-
-          <div class="setting-row">
-            <label for="typewriter-mode">Typewriter Mode</label>
-            <button
-              id="typewriter-mode"
-              class="toggle"
-              class:active={$settings.typewriterMode}
-              on:click={() => updateSetting('typewriterMode', !$settings.typewriterMode)}
-              role="switch"
-              aria-checked={$settings.typewriterMode}
-              aria-label="Toggle typewriter mode"
-            >
-              <span class="toggle-slider"></span>
-            </button>
-          </div>
-        </section>
-
-        <section class="settings-section">
           <h3>Statistics</h3>
 
           <div class="setting-row">
@@ -180,7 +145,8 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -194,11 +160,12 @@
   }
 
   .modal {
-    background: var(--color-bg-primary);
-    border-radius: var(--radius-lg);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
     width: 90%;
-    max-width: 480px;
+    max-width: 440px;
     max-height: 85vh;
     overflow: hidden;
     display: flex;
@@ -209,11 +176,11 @@
   @keyframes slideUp {
     from {
       opacity: 0;
-      transform: translateY(20px);
+      transform: translateY(20px) scale(0.98);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
     }
   }
 
@@ -221,13 +188,13 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-4) var(--space-6);
+    padding: var(--space-5) var(--space-6);
     border-bottom: 1px solid var(--color-border-light);
   }
 
   .modal-header h2 {
     font-size: 1.25rem;
-    font-weight: 600;
+    font-weight: 700;
     margin: 0;
   }
 
@@ -235,20 +202,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-sm);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
     color: var(--color-text-secondary);
-    transition: background var(--transition-fast), color var(--transition-fast);
+    transition: all var(--transition-fast);
   }
 
   .close-button:hover {
-    background: var(--color-bg-secondary);
+    background: var(--color-bg-tertiary);
     color: var(--color-text-primary);
   }
 
   .modal-body {
-    padding: var(--space-4) var(--space-6);
+    padding: var(--space-5) var(--space-6);
     overflow-y: auto;
   }
 
@@ -261,12 +228,12 @@
   }
 
   .settings-section h3 {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     font-weight: 600;
-    color: var(--color-text-secondary);
+    color: var(--color-text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: var(--space-3);
+    letter-spacing: 0.1em;
+    margin-bottom: var(--space-4);
   }
 
   .setting-row {
@@ -274,11 +241,6 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--space-3) 0;
-    border-bottom: 1px solid var(--color-border-light);
-  }
-
-  .setting-row:last-child {
-    border-bottom: none;
   }
 
   .setting-row label {
@@ -287,13 +249,24 @@
   }
 
   .setting-row select {
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    padding-right: var(--space-6);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-tertiary);
     color: var(--color-text-primary);
     font-size: var(--font-size-sm);
     cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .setting-row select:hover {
+    border-color: var(--color-accent);
+  }
+
+  .setting-row select:focus {
+    border-color: var(--color-accent);
+    box-shadow: var(--glow-accent);
   }
 
   .slider-group {
@@ -303,7 +276,7 @@
   }
 
   .slider-group input[type="range"] {
-    width: 120px;
+    width: 100px;
     accent-color: var(--color-accent);
   }
 
@@ -312,28 +285,34 @@
     color: var(--color-text-secondary);
     min-width: 45px;
     text-align: right;
+    font-variant-numeric: tabular-nums;
   }
 
   .toggle {
     position: relative;
-    width: 44px;
-    height: 24px;
+    width: 48px;
+    height: 28px;
     background: var(--color-bg-tertiary);
-    border-radius: 12px;
-    transition: background var(--transition-fast);
+    border-radius: var(--radius-full);
+    transition: all var(--transition-fast);
     cursor: pointer;
+  }
+
+  .toggle:hover {
+    background: var(--color-border);
   }
 
   .toggle.active {
     background: var(--color-accent);
+    box-shadow: var(--glow-accent);
   }
 
   .toggle-slider {
     position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 20px;
-    height: 20px;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
     background: white;
     border-radius: 50%;
     transition: transform var(--transition-fast);

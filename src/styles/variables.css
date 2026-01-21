@@ -1,124 +1,108 @@
 /* Wright - CSS Custom Properties */
 
 :root {
-  /* Color Palette - Light theme with warm, comfortable writing tones */
-  --color-bg-primary: #fafafa;
-  --color-bg-secondary: #f2f2f2;
-  --color-bg-tertiary: #e5e5e5;
-  --color-text-primary: #2c2c2c;
-  --color-text-secondary: #5c5c5c;
-  --color-text-muted: #8c8c8c;
-  --color-accent: #3b82f6;
-  --color-accent-hover: #2563eb;
-  --color-border: #d4d4d4;
-  --color-border-light: #e5e5e5;
+  /* Light theme */
+  --color-bg-primary: #f8f9fa;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #e9ecef;
+  --color-text-primary: #212529;
+  --color-text-secondary: #495057;
+  --color-text-muted: #868e96;
+  --color-accent: #228be6;
+  --color-accent-hover: #1c7ed6;
+  --color-accent-glow: rgba(34, 139, 230, 0.3);
+  --color-border: #dee2e6;
+  --color-border-light: #e9ecef;
 
-  /* Editor-specific tokens */
+  /* Editor */
   --color-editor-bg: #ffffff;
-  --color-editor-text: #333333;
-  --color-selection: rgba(59, 130, 246, 0.25);
-  --color-cursor: #3b82f6;
+  --color-editor-text: #212529;
+  --color-selection: rgba(34, 139, 230, 0.2);
+  --color-cursor: #228be6;
 
-  /* Markdown syntax highlighting */
+  /* Syntax */
   --color-heading: #1a1a1a;
-  --color-link: #3b82f6;
-  --color-code: #d946ef;
+  --color-link: #228be6;
+  --color-code: #e64980;
   --color-code-bg: rgba(0, 0, 0, 0.04);
-  --color-blockquote: #6b7280;
-  --color-list-marker: var(--color-accent);
 
   /* Sidebar */
-  --sidebar-width: 260px;
+  --sidebar-width: 280px;
   --sidebar-bg: var(--color-bg-secondary);
 
   /* Typography */
-  --font-family-editor: 'iA Writer Quattro', 'JetBrains Mono', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
-  --font-family-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  --font-size-base: 18px;
+  --font-family-editor: 'SF Mono', 'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  --font-family-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-size-base: 16px;
   --font-size-sm: 0.875rem;
   --font-size-xs: 0.75rem;
   --line-height: 1.7;
-  --line-length: 72ch;
 
-  /* Spacing scale (8px base) */
+  /* Spacing */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --space-4: 1rem;
+  --space-5: 1.25rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
+
+  /* Rounded corners - more pronounced */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Shadows and glows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --glow-accent: 0 0 20px var(--color-accent-glow);
 
   /* Transitions */
-  --transition-fast: 120ms ease;
-  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 400ms ease;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.08);
-
-  /* Focus ring */
-  --focus-ring: 0 0 0 2px rgba(59, 130, 246, 0.5);
-
-  /* Border radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
 }
 
-/* Dark theme - Refined, easy on eyes */
+/* Dark theme - Modern, glowy */
 [data-theme="dark"] {
-  --color-bg-primary: #171717;
-  --color-bg-secondary: #1f1f1f;
-  --color-bg-tertiary: #2a2a2a;
-  --color-text-primary: #e5e5e5;
-  --color-text-secondary: #a3a3a3;
-  --color-text-muted: #737373;
-  --color-accent: #60a5fa;
-  --color-accent-hover: #93c5fd;
-  --color-border: #363636;
-  --color-border-light: #262626;
+  --color-bg-primary: #0d1117;
+  --color-bg-secondary: #161b22;
+  --color-bg-tertiary: #21262d;
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #8b949e;
+  --color-text-muted: #6e7681;
+  --color-accent: #58a6ff;
+  --color-accent-hover: #79b8ff;
+  --color-accent-glow: rgba(88, 166, 255, 0.4);
+  --color-border: #30363d;
+  --color-border-light: #21262d;
 
-  --color-editor-bg: #1a1a1a;
-  --color-editor-text: #d4d4d4;
-  --color-selection: rgba(96, 165, 250, 0.35);
-  --color-cursor: #60a5fa;
+  --color-editor-bg: #0d1117;
+  --color-editor-text: #e6edf3;
+  --color-selection: rgba(88, 166, 255, 0.25);
+  --color-cursor: #58a6ff;
 
-  --color-heading: #f5f5f5;
-  --color-link: #60a5fa;
-  --color-code: #f472b6;
-  --color-code-bg: rgba(255, 255, 255, 0.06);
-  --color-blockquote: #9ca3af;
+  --color-heading: #ffffff;
+  --color-link: #58a6ff;
+  --color-code: #ff7b72;
+  --color-code-bg: rgba(110, 118, 129, 0.15);
 
   --sidebar-bg: var(--color-bg-secondary);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --glow-accent: 0 0 30px var(--color-accent-glow);
 }
 
-/* High contrast mode support */
-@media (forced-colors: active) {
-  :root {
-    --color-bg-primary: Canvas;
-    --color-bg-secondary: Canvas;
-    --color-text-primary: CanvasText;
-    --color-text-secondary: CanvasText;
-    --color-accent: LinkText;
-    --color-border: ButtonText;
-  }
-}
-
-/* Reduced motion support */
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

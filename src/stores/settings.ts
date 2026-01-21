@@ -1,7 +1,7 @@
 import { writable, get } from 'svelte/store';
 import { getSetting, setSetting } from '../lib/db';
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark';
 export type FontFamily = 'mono' | 'serif' | 'sans';
 
 export interface Settings {
@@ -14,10 +14,11 @@ export interface Settings {
   showWordCount: boolean;
   showReadingTime: boolean;
   sidebarOpen: boolean;
+  showFormatting: boolean;
 }
 
 const defaultSettings: Settings = {
-  theme: 'system',
+  theme: 'dark',
   fontFamily: 'mono',
   fontSize: 18,
   lineHeight: 1.6,
@@ -25,27 +26,24 @@ const defaultSettings: Settings = {
   typewriterMode: false,
   showWordCount: true,
   showReadingTime: true,
-  sidebarOpen: false
+  sidebarOpen: false,
+  showFormatting: false
 };
 
 export const settings = writable<Settings>(defaultSettings);
 
 // Apply theme to document
 function applyTheme(theme: Theme): void {
-  let resolvedTheme: 'light' | 'dark';
-
-  if (theme === 'system') {
-    resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  } else {
-    resolvedTheme = theme;
-  }
-
-  document.documentElement.setAttribute('data-theme', resolvedTheme);
+  document.documentElement.setAttribute('data-theme', theme);
 }
 
 // Load settings from IndexedDB
 export async function loadSettings(): Promise<void> {
   const savedSettings = await getSetting<Partial<Settings>>('settings', {});
+  // Migrate old 'system' theme to 'dark'
+  if ((savedSettings as any).theme === 'system') {
+    savedSettings.theme = 'dark';
+  }
   const merged = { ...defaultSettings, ...savedSettings };
   settings.set(merged);
   applyTheme(merged.theme);
@@ -85,12 +83,8 @@ export async function toggleTypewriterMode(): Promise<void> {
   await updateSetting('typewriterMode', !current.typewriterMode);
 }
 
-// Listen for system theme changes
-if (typeof window !== 'undefined') {
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    const current = get(settings);
-    if (current.theme === 'system') {
-      applyTheme('system');
-    }
-  });
+// Toggle formatting toolbar
+export async function toggleFormatting(): Promise<void> {
+  const current = get(settings);
+  await updateSetting('showFormatting', !current.showFormatting);
 }

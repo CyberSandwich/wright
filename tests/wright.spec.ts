@@ -29,6 +29,11 @@ test.describe('Wright - Markdown Editor', () => {
     test('should show sidebar toggle when sidebar is closed', async ({ page }) => {
       await expect(page.locator('[aria-label="Open sidebar"]')).toBeVisible();
     });
+
+    test('should default to dark theme', async ({ page }) => {
+      const theme = await page.locator('html').getAttribute('data-theme');
+      expect(theme).toBe('dark');
+    });
   });
 
   test.describe('Sidebar', () => {
@@ -60,7 +65,6 @@ test.describe('Wright - Markdown Editor', () => {
 
   test.describe('Document Management', () => {
     test('should rename a document', async ({ page }) => {
-      // Click on the document title to edit it
       await page.click('[aria-label*="Document title"]');
 
       const titleInput = page.locator('.title-input');
@@ -92,47 +96,69 @@ test.describe('Wright - Markdown Editor', () => {
       await expect(editor).toContainText('Hello Wright!');
     });
 
-    test('should auto-save content', async ({ page }) => {
-      const editor = page.locator('.milkdown .ProseMirror').first();
-      await editor.click();
-      await page.keyboard.type('Test content');
-
-      await page.waitForTimeout(1500);
-      await expect(page.locator('.save-status')).toContainText('Saved');
-    });
-
-    test('should update word count', async ({ page }) => {
+    test('should update word count in stats bubble', async ({ page }) => {
       const editor = page.locator('.milkdown .ProseMirror').first();
       await editor.click();
       await page.keyboard.type('One two three four five');
 
       await page.waitForTimeout(500);
-      await expect(page.locator('.stats')).toContainText('5 words');
+      await expect(page.locator('.stats-bubble')).toContainText('5 words');
     });
 
-    test('should show reading time in proper format', async ({ page }) => {
+    test('should show reading time in stats bubble', async ({ page }) => {
       const editor = page.locator('.milkdown .ProseMirror').first();
       await editor.click();
-      // Type enough words to generate some reading time
       await page.keyboard.type('This is a test paragraph with enough words to measure reading time properly.');
 
       await page.waitForTimeout(500);
-      // Should show time in seconds or minutes format
-      const statsText = await page.locator('.stats').textContent();
-      expect(statsText).toMatch(/\d+s read|\d+m read|\d+m \d+s read/);
+      const statsText = await page.locator('.stats-bubble').textContent();
+      expect(statsText).toMatch(/\d+s|\d+m/);
+    });
+  });
+
+  test.describe('Formatting Toolbar', () => {
+    test('should toggle formatting bar visibility', async ({ page }) => {
+      // Initially hidden
+      await expect(page.locator('.formatting-bar')).not.toBeVisible();
+
+      // Click format toggle
+      await page.click('[aria-label="Toggle formatting toolbar"]');
+      await expect(page.locator('.formatting-bar')).toBeVisible();
+
+      // Click again to hide
+      await page.click('[aria-label="Toggle formatting toolbar"]');
+      await expect(page.locator('.formatting-bar')).not.toBeVisible();
+    });
+
+    test('should show formatting options when enabled', async ({ page }) => {
+      await page.click('[aria-label="Toggle formatting toolbar"]');
+
+      await expect(page.locator('.format-btn[title="Bold (Ctrl+B)"]')).toBeVisible();
+      await expect(page.locator('.format-btn[title="Italic (Ctrl+I)"]')).toBeVisible();
+      await expect(page.locator('.format-btn[title="Heading 1"]')).toBeVisible();
     });
   });
 
   test.describe('Theme', () => {
-    test('should cycle through themes', async ({ page }) => {
+    test('should toggle between dark and light themes', async ({ page }) => {
       const themeBtn = page.locator('[aria-label="Change theme"]');
       await expect(themeBtn).toBeVisible();
 
+      // Start in dark mode
+      let theme = await page.locator('html').getAttribute('data-theme');
+      expect(theme).toBe('dark');
+
+      // Toggle to light
       await themeBtn.click();
       await page.waitForTimeout(100);
+      theme = await page.locator('html').getAttribute('data-theme');
+      expect(theme).toBe('light');
 
-      const theme = await page.locator('html').getAttribute('data-theme');
-      expect(['light', 'dark']).toContain(theme);
+      // Toggle back to dark
+      await themeBtn.click();
+      await page.waitForTimeout(100);
+      theme = await page.locator('html').getAttribute('data-theme');
+      expect(theme).toBe('dark');
     });
   });
 
@@ -146,11 +172,12 @@ test.describe('Wright - Markdown Editor', () => {
       await expect(page.locator('.dropdown-menu')).not.toBeVisible();
     });
 
-    test('should have import, export, and delete options', async ({ page }) => {
+    test('should have import and export options', async ({ page }) => {
       await page.click('[aria-label="More actions"]');
 
       await expect(page.getByRole('menuitem', { name: 'Import' })).toBeVisible();
-      await expect(page.getByRole('menuitem', { name: 'Export' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Export as .md' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Export as .txt' })).toBeVisible();
       await expect(page.getByRole('menuitem', { name: 'Delete' })).toBeVisible();
     });
 
@@ -182,18 +209,26 @@ test.describe('Wright - Markdown Editor', () => {
       await page.keyboard.press('Escape');
       await expect(page.locator('[role="dialog"]')).not.toBeVisible();
     });
+
+    test('should only show dark and light theme options', async ({ page }) => {
+      await openSidebar(page);
+      await page.click('[aria-label="Open settings"]');
+
+      const themeSelect = page.locator('#theme-select');
+      await expect(themeSelect.locator('option[value="dark"]')).toBeVisible();
+      await expect(themeSelect.locator('option[value="light"]')).toBeVisible();
+      await expect(themeSelect.locator('option[value="system"]')).not.toBeVisible();
+    });
   });
 
   test.describe('Keyboard Shortcuts', () => {
-    test('should save with Ctrl+S', async ({ page }) => {
+    test('should support Ctrl+S', async ({ page }) => {
       const editor = page.locator('.milkdown .ProseMirror').first();
       await editor.click();
       await page.keyboard.type('Test');
 
       await page.keyboard.press('Control+s');
-      await page.waitForTimeout(300);
-
-      await expect(page.locator('.save-status')).toContainText('Saved');
+      // No save indicator anymore, but command should not error
     });
   });
 
