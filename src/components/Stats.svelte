@@ -1,20 +1,20 @@
 <script lang="ts">
   import { settings } from '../stores/settings';
-  import { formatReadingTime, formatWordCount, type TextStats } from '../lib/stats';
+  import { formatTime, type TextStats } from '../lib/stats';
 
   export let stats: TextStats;
 </script>
 
 <div class="stats" role="status" aria-live="polite">
   {#if $settings.showWordCount}
-    <span class="stat" title="Word count">
-      {formatWordCount(stats.words)} words
+    <span class="stat" aria-label="Word count">
+      {stats.words} {stats.words === 1 ? 'word' : 'words'}
     </span>
   {/if}
 
   {#if $settings.showReadingTime && stats.words > 0}
-    <span class="stat" title="Estimated reading time">
-      {formatReadingTime(stats.readingTime)} read
+    <span class="stat" aria-label="Estimated reading time">
+      {formatTime(stats.readingTimeSeconds)} read
     </span>
   {/if}
 </div>

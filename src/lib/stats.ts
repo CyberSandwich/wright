@@ -4,8 +4,8 @@ export interface TextStats {
   charactersNoSpaces: number;
   sentences: number;
   paragraphs: number;
-  readingTime: number;
-  speakingTime: number;
+  readingTimeSeconds: number;
+  speakingTimeSeconds: number;
 }
 
 export function calculateStats(text: string): TextStats {
@@ -16,8 +16,8 @@ export function calculateStats(text: string): TextStats {
       charactersNoSpaces: 0,
       sentences: 0,
       paragraphs: 0,
-      readingTime: 0,
-      speakingTime: 0
+      readingTimeSeconds: 0,
+      speakingTimeSeconds: 0
     };
   }
 
@@ -34,11 +34,11 @@ export function calculateStats(text: string): TextStats {
   // Paragraph count (non-empty lines separated by blank lines)
   const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim()).length || 1;
 
-  // Reading time (based on Marc Brysbaert 2019 research - 238 WPM)
-  const readingTime = Math.ceil(words / 238);
+  // Reading time in seconds (238 WPM average)
+  const readingTimeSeconds = Math.round((words / 238) * 60);
 
-  // Speaking time (for presentations - 130 WPM)
-  const speakingTime = Math.ceil(words / 130);
+  // Speaking time in seconds (130 WPM for presentations)
+  const speakingTimeSeconds = Math.round((words / 130) * 60);
 
   return {
     words,
@@ -46,15 +46,18 @@ export function calculateStats(text: string): TextStats {
     charactersNoSpaces,
     sentences,
     paragraphs,
-    readingTime,
-    speakingTime
+    readingTimeSeconds,
+    speakingTimeSeconds
   };
 }
 
-export function formatReadingTime(minutes: number): string {
-  if (minutes === 0) return '< 1 min';
-  if (minutes === 1) return '1 min';
-  return `${minutes} min`;
+export function formatTime(seconds: number): string {
+  if (seconds === 0) return '0s';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins === 0) return `${secs}s`;
+  if (secs === 0) return `${mins}m`;
+  return `${mins}m ${secs}s`;
 }
 
 export function formatWordCount(count: number): string {
@@ -73,20 +76,5 @@ export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
   return (...args: Parameters<T>) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), delay);
-  };
-}
-
-// Throttle utility for scroll sync
-export function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(
-  fn: T,
-  limit: number
-): (...args: Parameters<T>) => void {
-  let inThrottle = false;
-  return (...args: Parameters<T>) => {
-    if (!inThrottle) {
-      fn(...args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
-    }
   };
 }
