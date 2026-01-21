@@ -196,8 +196,8 @@
     const cursorRelativeY = rect.top - scrollAreaRect.top;
     const diff = cursorRelativeY - targetY;
 
-    // Only scroll if cursor is noticeably off-center
-    if (Math.abs(diff) > 40) {
+    // Always keep cursor centered - update target with minimal threshold
+    if (Math.abs(diff) > 2) {
       currentScrollTarget = scrollArea.scrollTop + diff;
 
       if (!isTypewriterAnimating) {
@@ -213,16 +213,16 @@
     const diff = currentScrollTarget - currentScroll;
 
     // If we're close enough, stop animating
-    if (Math.abs(diff) < 1) {
+    if (Math.abs(diff) < 0.5) {
       isTypewriterAnimating = false;
       return;
     }
 
     isTypewriterAnimating = true;
 
-    // Smooth easing - move 12% of remaining distance each frame
-    // This creates a buttery smooth deceleration effect
-    const step = diff * 0.12;
+    // Smooth easing - move 20% of remaining distance each frame
+    // Fast enough to feel responsive, smooth enough to not jitter
+    const step = diff * 0.20;
     scrollArea.scrollTop = currentScroll + step;
 
     typewriterAnimationFrame = requestAnimationFrame(animateTypewriterScroll);
