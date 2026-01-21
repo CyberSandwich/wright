@@ -4,6 +4,8 @@ import { getSetting, setSetting } from '../lib/db';
 export type Theme = 'light' | 'dark';
 export type FontFamily = 'mono' | 'serif' | 'sans';
 
+export type SyntaxHighlightMode = 'off' | 'nouns' | 'verbs' | 'adjectives' | 'adverbs' | 'conjunctions';
+
 export interface Settings {
   theme: Theme;
   fontFamily: FontFamily;
@@ -12,9 +14,11 @@ export interface Settings {
   focusMode: boolean;
   typewriterMode: boolean;
   showWordCount: boolean;
+  showLetterCount: boolean;
   showReadingTime: boolean;
   sidebarOpen: boolean;
   showFormatting: boolean;
+  syntaxHighlight: SyntaxHighlightMode;
 }
 
 const defaultSettings: Settings = {
@@ -25,9 +29,11 @@ const defaultSettings: Settings = {
   focusMode: false,
   typewriterMode: false,
   showWordCount: true,
+  showLetterCount: true,
   showReadingTime: true,
   sidebarOpen: false,
-  showFormatting: false
+  showFormatting: false,
+  syntaxHighlight: 'off'
 };
 
 export const settings = writable<Settings>(defaultSettings);

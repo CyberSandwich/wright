@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { settings, updateSetting, type Theme, type FontFamily } from '../stores/settings';
+  import { settings, updateSetting, type Theme, type FontFamily, type SyntaxHighlightMode } from '../stores/settings';
   import { modalState, closeModal } from '../stores/ui';
 
   function handleBackdropClick(event: MouseEvent) {
@@ -158,7 +158,20 @@
           </div>
 
           <div class="setting-row toggle-row">
-            <span class="setting-label">Reading Time</span>
+            <span class="setting-label">Letter Count</span>
+            <button
+              class="toggle"
+              class:active={$settings.showLetterCount}
+              on:click={() => updateSetting('showLetterCount', !$settings.showLetterCount)}
+              role="switch"
+              aria-checked={$settings.showLetterCount}
+            >
+              <span class="toggle-slider"></span>
+            </button>
+          </div>
+
+          <div class="setting-row toggle-row">
+            <span class="setting-label">Speaking Time</span>
             <button
               class="toggle"
               class:active={$settings.showReadingTime}
@@ -168,6 +181,59 @@
             >
               <span class="toggle-slider"></span>
             </button>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Writing</h3>
+
+          <div class="setting-row">
+            <span class="setting-label">Syntax Highlight</span>
+            <p class="setting-description">Highlight parts of speech like iA Writer</p>
+            <div class="syntax-buttons">
+              <button
+                class="syntax-btn"
+                class:active={$settings.syntaxHighlight === 'off'}
+                on:click={() => updateSetting('syntaxHighlight', 'off')}
+              >
+                Off
+              </button>
+              <button
+                class="syntax-btn"
+                class:active={$settings.syntaxHighlight === 'nouns'}
+                on:click={() => updateSetting('syntaxHighlight', 'nouns')}
+              >
+                Nouns
+              </button>
+              <button
+                class="syntax-btn"
+                class:active={$settings.syntaxHighlight === 'verbs'}
+                on:click={() => updateSetting('syntaxHighlight', 'verbs')}
+              >
+                Verbs
+              </button>
+              <button
+                class="syntax-btn"
+                class:active={$settings.syntaxHighlight === 'adjectives'}
+                on:click={() => updateSetting('syntaxHighlight', 'adjectives')}
+              >
+                Adjectives
+              </button>
+              <button
+                class="syntax-btn"
+                class:active={$settings.syntaxHighlight === 'adverbs'}
+                on:click={() => updateSetting('syntaxHighlight', 'adverbs')}
+              >
+                Adverbs
+              </button>
+              <button
+                class="syntax-btn"
+                class:active={$settings.syntaxHighlight === 'conjunctions'}
+                on:click={() => updateSetting('syntaxHighlight', 'conjunctions')}
+              >
+                Conjunctions
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -451,5 +517,45 @@
 
   .toggle.active .toggle-slider {
     transform: translateX(24px);
+  }
+
+  /* Setting description */
+  .setting-description {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    margin: var(--space-1) 0 var(--space-3) 0;
+  }
+
+  /* Syntax highlight buttons */
+  .syntax-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .syntax-btn {
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-tertiary);
+    border: 2px solid transparent;
+    border-radius: var(--radius-lg);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+  }
+
+  .syntax-btn:hover {
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+  }
+
+  .syntax-btn.active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: white;
+  }
+
+  .syntax-btn.active:hover {
+    box-shadow: var(--glow-accent);
   }
 </style>

@@ -8,6 +8,7 @@
   import { currentDocument, currentDocumentId, updateContent } from '../stores/documents';
   import { settings } from '../stores/settings';
   import { calculateStats, debounce, formatTime, type TextStats } from '../lib/stats';
+  import { applySyntaxHighlighting, clearSyntaxHighlighting } from '../lib/syntax-highlight';
 
   const dispatch = createEventDispatcher();
 
@@ -33,12 +34,27 @@
   let activeFormats = {
     bold: false,
     italic: false,
+    underline: false,
+    strikethrough: false,
     heading: null as number | null
   };
 
   const updateStats = debounce((content: string) => {
     stats = calculateStats(content);
   }, 300);
+
+  // Debounced syntax highlighting to avoid performance issues
+  const applySyntaxHighlightingDebounced = debounce((content: string) => {
+    if (!editorContainer) return;
+    const proseMirror = editorContainer.querySelector('.ProseMirror');
+    if (!proseMirror) return;
+
+    if ($settings.syntaxHighlight === 'off') {
+      clearSyntaxHighlighting(proseMirror as HTMLElement);
+    } else {
+      applySyntaxHighlighting(proseMirror as HTMLElement, content, $settings.syntaxHighlight);
+    }
+  }, 500);
 
   function triggerTypingEffect() {
     isTyping = true;
@@ -64,6 +80,8 @@
     // Reset states
     let isBold = false;
     let isItalic = false;
+    let isUnderline = false;
+    let isStrikethrough = false;
     let headingLevel: number | null = null;
 
     // Walk up the DOM tree to check for formatting
@@ -72,6 +90,8 @@
         const tag = node.tagName;
         if (tag === 'STRONG' || tag === 'B') isBold = true;
         if (tag === 'EM' || tag === 'I') isItalic = true;
+        if (tag === 'U') isUnderline = true;
+        if (tag === 'S' || tag === 'DEL' || tag === 'STRIKE') isStrikethrough = true;
         if (tag === 'H1') headingLevel = 1;
         else if (tag === 'H2') headingLevel = 2;
         else if (tag === 'H3') headingLevel = 3;
@@ -82,7 +102,7 @@
       node = node.parentNode;
     }
 
-    activeFormats = { bold: isBold, italic: isItalic, heading: headingLevel };
+    activeFormats = { bold: isBold, italic: isItalic, underline: isUnderline, strikethrough: isStrikethrough, heading: headingLevel };
     dispatch('formatchange', activeFormats);
   }
 
@@ -94,28 +114,45 @@
     if (!proseMirror) return;
 
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+    if (!selection || selection.rangeCount === 0) {
+      // No selection, clear focus mode styling
+      clearFocusMode();
+      return;
+    }
 
     const range = selection.getRangeAt(0);
     let activeBlock: Element | null = null;
 
-    // Find the active paragraph/block
+    // Find the active paragraph/block - start from the actual node
     let node: Node | null = range.startContainer;
+
+    // If we're in a text node, start with parent
+    if (node.nodeType === Node.TEXT_NODE) {
+      node = node.parentNode;
+    }
+
     while (node && node !== proseMirror) {
-      if (node instanceof Element && ['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE'].includes(node.tagName)) {
-        activeBlock = node;
-        break;
+      if (node instanceof Element) {
+        const tag = node.tagName.toUpperCase();
+        if (['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE', 'PRE'].includes(tag)) {
+          activeBlock = node;
+          break;
+        }
       }
       node = node.parentNode;
     }
 
-    // Apply dimming to all blocks except active
+    // Get all block elements
     const blocks = proseMirror.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre');
+
     blocks.forEach((block) => {
+      const el = block as HTMLElement;
       if (block === activeBlock) {
-        (block as HTMLElement).style.opacity = '1';
+        el.style.opacity = '1';
+        el.style.transition = 'opacity 0.15s ease';
       } else {
-        (block as HTMLElement).style.opacity = '0.3';
+        el.style.opacity = '0.25';
+        el.style.transition = 'opacity 0.15s ease';
       }
     });
   }
@@ -129,26 +166,45 @@
   }
 
   // Typewriter mode - keep cursor vertically centered
-  function applyTypewriterMode() {
-    if (!editorWrapper || !$settings.typewriterMode) return;
+  let scrollArea: HTMLElement | null = null;
 
-    const proseMirror = editorContainer?.querySelector('.ProseMirror');
-    if (!proseMirror) return;
+  function applyTypewriterMode() {
+    if (!$settings.typewriterMode) return;
+
+    // Get the scroll area element
+    if (!scrollArea) {
+      scrollArea = editorWrapper?.querySelector('.editor-scroll-area') as HTMLElement;
+    }
+    if (!scrollArea) return;
 
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
 
     const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    const wrapperRect = editorWrapper.getBoundingClientRect();
 
-    // Calculate where we want the cursor to be (center of visible area)
-    const targetY = wrapperRect.top + wrapperRect.height / 2;
-    const currentY = rect.top;
-    const diff = currentY - targetY;
+    // Create a temporary span to get accurate cursor position
+    const tempSpan = document.createElement('span');
+    tempSpan.textContent = '\u200B'; // Zero-width space
 
-    if (Math.abs(diff) > 50) {
-      editorWrapper.scrollBy({
+    // Clone range and insert span at cursor
+    const clonedRange = range.cloneRange();
+    clonedRange.collapse(true);
+    clonedRange.insertNode(tempSpan);
+
+    const rect = tempSpan.getBoundingClientRect();
+    const scrollAreaRect = scrollArea.getBoundingClientRect();
+
+    // Remove the temp span
+    tempSpan.remove();
+
+    // Calculate target position (center of scroll area)
+    const targetY = scrollAreaRect.height / 2;
+    const cursorRelativeY = rect.top - scrollAreaRect.top;
+    const diff = cursorRelativeY - targetY;
+
+    // Smoothly scroll to keep cursor centered
+    if (Math.abs(diff) > 10) {
+      scrollArea.scrollBy({
         top: diff,
         behavior: 'smooth'
       });
@@ -184,6 +240,18 @@
     }
   }
 
+  export function toggleUnderline() {
+    if (!editorInstance) return;
+    // Use execCommand for underline since it's not in standard Markdown
+    document.execCommand('underline', false);
+  }
+
+  export function toggleStrikethrough() {
+    if (!editorInstance) return;
+    // Use execCommand for strikethrough
+    document.execCommand('strikethrough', false);
+  }
+
   async function initEditor(content: string) {
     if (editorContainer) {
       editorContainer.innerHTML = '';
@@ -206,6 +274,17 @@
           updateContent(markdown);
           updateStats(markdown);
           triggerTypingEffect();
+          // Apply modes on content change
+          if ($settings.focusMode) {
+            requestAnimationFrame(() => applyFocusMode());
+          }
+          if ($settings.typewriterMode) {
+            requestAnimationFrame(() => applyTypewriterMode());
+          }
+          // Apply syntax highlighting
+          if ($settings.syntaxHighlight !== 'off') {
+            applySyntaxHighlightingDebounced(markdown);
+          }
         });
       })
       .use(commonmark)
@@ -255,6 +334,16 @@
     clearFocusMode();
   }
 
+  // React to syntax highlight changes
+  $: if (isInitialized && editorContainer && $currentDocument) {
+    if ($settings.syntaxHighlight === 'off') {
+      const proseMirror = editorContainer.querySelector('.ProseMirror');
+      if (proseMirror) clearSyntaxHighlighting(proseMirror as HTMLElement);
+    } else {
+      applySyntaxHighlightingDebounced($currentDocument.content);
+    }
+  }
+
   $: fontFamily = $settings.fontFamily === 'mono'
     ? 'var(--font-family-editor)'
     : $settings.fontFamily === 'serif'
@@ -274,14 +363,18 @@
     ></div>
   </div>
 
-  {#if $settings.showWordCount || $settings.showReadingTime}
+  {#if $settings.showWordCount || $settings.showLetterCount || $settings.showReadingTime}
     <div class="stats-bubble" class:typing={isTyping}>
       {#if $settings.showWordCount}
         <span>{stats.words} words</span>
+      {/if}
+      {#if $settings.showWordCount && $settings.showLetterCount}
         <span class="stats-dot">·</span>
+      {/if}
+      {#if $settings.showLetterCount}
         <span>{stats.charactersNoSpaces} letters</span>
       {/if}
-      {#if $settings.showWordCount && $settings.showReadingTime && stats.words > 0}
+      {#if ($settings.showWordCount || $settings.showLetterCount) && $settings.showReadingTime && stats.words > 0}
         <span class="stats-dot">·</span>
       {/if}
       {#if $settings.showReadingTime && stats.words > 0}
@@ -335,7 +428,8 @@
   .stats-bubble {
     position: absolute;
     bottom: var(--space-6);
-    right: var(--space-6);
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -351,12 +445,19 @@
     transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
   }
 
+  /* Mobile safe area adjustment */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .stats-bubble {
+      bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
+    }
+  }
+
   .stats-dot {
     opacity: 0.5;
   }
 
   .stats-bubble.typing {
-    transform: scale(1.02);
+    transform: translateX(-50%) scale(1.02);
   }
 
   /* Subtle typing pulse on cursor line */
@@ -507,5 +608,41 @@
   /* Selection */
   .editor-container :global(.milkdown .ProseMirror ::selection) {
     background: var(--color-selection);
+  }
+
+  /* Syntax highlighting styles */
+  .editor-container :global(.syntax-hl) {
+    border-radius: 2px;
+    padding: 0 1px;
+    transition: background 0.15s ease;
+  }
+
+  .editor-container :global(.syntax-nouns) {
+    color: var(--color-syntax-noun, #4A9EFF);
+  }
+
+  .editor-container :global(.syntax-verbs) {
+    color: var(--color-syntax-verb, #FF6B6B);
+  }
+
+  .editor-container :global(.syntax-adjectives) {
+    color: var(--color-syntax-adjective, #9D7CD8);
+  }
+
+  .editor-container :global(.syntax-adverbs) {
+    color: var(--color-syntax-adverb, #7DCE82);
+  }
+
+  .editor-container :global(.syntax-conjunctions) {
+    color: var(--color-syntax-conjunction, #F7B955);
+  }
+
+  /* Dim non-highlighted text when syntax mode is active */
+  .editor-container[data-syntax-mode] :global(.milkdown .ProseMirror) {
+    color: var(--color-text-muted);
+  }
+
+  .editor-container[data-syntax-mode] :global(.syntax-hl) {
+    font-weight: 500;
   }
 </style>

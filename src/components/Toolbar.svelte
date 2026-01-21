@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { currentDocument, updateTitle, saveNow } from '../stores/documents';
+  import { currentDocument, saveNow } from '../stores/documents';
   import { settings, toggleSidebar, updateSetting, toggleFocusMode, toggleTypewriterMode, type FontFamily } from '../stores/settings';
   import { openModal } from '../stores/ui';
   import { fileSave } from 'browser-fs-access';
@@ -7,45 +7,24 @@
 
   const dispatch = createEventDispatcher();
 
-  let isEditingTitle = false;
-  let titleInput: HTMLInputElement;
-  let editedTitle = '';
   let showExportMenu = false;
   let showFontMenu = false;
+  let showHeadingMenu = false;
 
   // Active format states (updated by Editor)
   export let activeFormats: {
     bold: boolean;
     italic: boolean;
+    underline: boolean;
+    strikethrough: boolean;
     heading: number | null;
   } = {
     bold: false,
     italic: false,
+    underline: false,
+    strikethrough: false,
     heading: null
   };
-
-  function startEditTitle() {
-    if ($currentDocument) {
-      editedTitle = $currentDocument.title;
-      isEditingTitle = true;
-      setTimeout(() => titleInput?.focus(), 0);
-    }
-  }
-
-  function saveTitle() {
-    if (editedTitle.trim()) {
-      updateTitle(editedTitle.trim());
-    }
-    isEditingTitle = false;
-  }
-
-  function handleTitleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Enter') {
-      saveTitle();
-    } else if (event.key === 'Escape') {
-      isEditingTitle = false;
-    }
-  }
 
   async function handleExport(format: 'md' | 'txt') {
     if (!$currentDocument) return;
@@ -60,6 +39,8 @@
         .replace(/#{1,6}\s/g, '')
         .replace(/\*\*(.+?)\*\*/g, '$1')
         .replace(/\*(.+?)\*/g, '$1')
+        .replace(/~~(.+?)~~/g, '$1')
+        .replace(/<u>(.+?)<\/u>/g, '$1')
         .replace(/`(.+?)`/g, '$1')
         .replace(/\[(.+?)\]\(.+?\)/g, '$1')
         .replace(/^\s*[-*+]\s/gm, '')
@@ -86,37 +67,31 @@
     openModal('settings');
   }
 
-  function handleDelete() {
-    openModal('delete-confirm');
-  }
-
   function handleKeyDown(event: KeyboardEvent) {
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     const modifier = isMac ? event.metaKey : event.ctrlKey;
 
-    // Save: Cmd+S
     if (modifier && event.key === 's') {
       event.preventDefault();
       saveNow();
       return;
     }
 
-    // Format shortcuts (Cmd+Shift+...)
     if (modifier && event.shiftKey) {
       switch (event.key.toLowerCase()) {
-        case 't': // Title (H1)
+        case 't':
           event.preventDefault();
           dispatch('format', { type: 'heading', level: 1 });
           break;
-        case 'h': // Heading (H2)
+        case 'h':
           event.preventDefault();
           dispatch('format', { type: 'heading', level: 2 });
           break;
-        case 'j': // Subheading (H3)
+        case 'j':
           event.preventDefault();
           dispatch('format', { type: 'heading', level: 3 });
           break;
-        case 'b': // Body (remove heading)
+        case 'b':
           event.preventDefault();
           dispatch('format', { type: 'heading', level: 0 });
           break;
@@ -124,7 +99,12 @@
       return;
     }
 
-    // Font size: Cmd+Plus / Cmd+Minus
+    if (modifier && event.key === 'u') {
+      event.preventDefault();
+      dispatch('format', { type: 'underline' });
+      return;
+    }
+
     if (modifier && (event.key === '=' || event.key === '+')) {
       event.preventDefault();
       adjustFontSize(1);
@@ -140,9 +120,9 @@
   function closeMenus() {
     showExportMenu = false;
     showFontMenu = false;
+    showHeadingMenu = false;
   }
 
-  // Formatting commands
   function toggleBold() {
     dispatch('format', { type: 'bold' });
   }
@@ -151,9 +131,17 @@
     dispatch('format', { type: 'italic' });
   }
 
+  function toggleUnderline() {
+    dispatch('format', { type: 'underline' });
+  }
+
+  function toggleStrikethrough() {
+    dispatch('format', { type: 'strikethrough' });
+  }
+
   function setHeading(level: number) {
-    const newLevel = activeFormats.heading === level ? 0 : level;
-    dispatch('format', { type: 'heading', level: newLevel });
+    showHeadingMenu = false;
+    dispatch('format', { type: 'heading', level });
   }
 
   function setFont(font: FontFamily) {
@@ -168,6 +156,10 @@
 
   $: fontLabel = $settings.fontFamily === 'mono' ? 'Mono' :
                  $settings.fontFamily === 'serif' ? 'Serif' : 'Sans';
+
+  $: headingLabel = activeFormats.heading === 1 ? 'Title' :
+                    activeFormats.heading === 2 ? 'Heading' :
+                    activeFormats.heading === 3 ? 'Subheading' : 'Body';
 </script>
 
 <svelte:window on:keydown={handleKeyDown} on:click={closeMenus} />
@@ -181,184 +173,153 @@
       aria-label={$settings.sidebarOpen ? "Close sidebar" : "Open sidebar"}
     >
       {#if $settings.sidebarOpen}
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
       {:else}
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
       {/if}
     </button>
-
-    {#if isEditingTitle}
-      <input
-        bind:this={titleInput}
-        bind:value={editedTitle}
-        on:blur={saveTitle}
-        on:keydown={handleTitleKeyDown}
-        class="title-input"
-        type="text"
-        aria-label="Document title"
-      />
-    {:else}
-      <button
-        class="title-btn"
-        on:click={startEditTitle}
-        title="Click to rename"
-        aria-label="Document title: {$currentDocument?.title || 'Untitled'}"
-      >
-        {$currentDocument?.title || 'Untitled'}
-      </button>
-    {/if}
   </div>
 
   <div class="toolbar-center">
-    <button
-      class="format-btn"
-      class:active={activeFormats.bold}
-      on:click={toggleBold}
-      title="Bold"
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
-        <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
-      </svg>
-    </button>
-    <button
-      class="format-btn"
-      class:active={activeFormats.italic}
-      on:click={toggleItalic}
-      title="Italic"
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="19" y1="4" x2="10" y2="4"/>
-        <line x1="14" y1="20" x2="5" y2="20"/>
-        <line x1="15" y1="4" x2="9" y2="20"/>
-      </svg>
-    </button>
-
-    <div class="format-divider"></div>
-
-    <button
-      class="format-btn heading-btn"
-      class:active={activeFormats.heading === 1}
-      on:click={() => setHeading(1)}
-      title="Heading 1"
-    >H1</button>
-    <button
-      class="format-btn heading-btn"
-      class:active={activeFormats.heading === 2}
-      on:click={() => setHeading(2)}
-      title="Heading 2"
-    >H2</button>
-    <button
-      class="format-btn heading-btn"
-      class:active={activeFormats.heading === 3}
-      on:click={() => setHeading(3)}
-      title="Heading 3"
-    >H3</button>
-
-    <div class="format-divider"></div>
-
-    <div class="font-container">
+    <div class="format-group">
       <button
-        class="font-select-btn"
-        on:click|stopPropagation={() => showFontMenu = !showFontMenu}
-        title="Font family"
+        class="format-btn"
+        class:active={activeFormats.bold}
+        on:click={toggleBold}
+        title="Bold (Cmd+B)"
       >
-        {fontLabel}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+          <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+        </svg>
+      </button>
+      <button
+        class="format-btn"
+        class:active={activeFormats.italic}
+        on:click={toggleItalic}
+        title="Italic (Cmd+I)"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="4" x2="10" y2="4"/>
+          <line x1="14" y1="20" x2="5" y2="20"/>
+          <line x1="15" y1="4" x2="9" y2="20"/>
+        </svg>
+      </button>
+      <button
+        class="format-btn"
+        class:active={activeFormats.underline}
+        on:click={toggleUnderline}
+        title="Underline (Cmd+U)"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/>
+          <line x1="4" y1="21" x2="20" y2="21"/>
+        </svg>
+      </button>
+      <button
+        class="format-btn"
+        class:active={activeFormats.strikethrough}
+        on:click={toggleStrikethrough}
+        title="Strikethrough"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <path d="M17.5 7.5c-1-1.5-2.5-2.5-5.5-2.5-4 0-6 2-6 4 0 1.5 1 3 6 4"/>
+          <path d="M8.5 16.5c1 1 2.5 2.5 5.5 2.5 4 0 6-2 6-4"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="dropdown-container">
+      <button
+        class="dropdown-btn"
+        on:click|stopPropagation={() => showHeadingMenu = !showHeadingMenu}
+        title="Text style"
+      >
+        {headingLabel}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M6 9l6 6 6-6"/>
         </svg>
       </button>
-      {#if showFontMenu}
-        <div class="font-menu">
-          <button class="font-option" class:active={$settings.fontFamily === 'mono'} on:click={() => setFont('mono')}>Mono</button>
-          <button class="font-option" class:active={$settings.fontFamily === 'serif'} on:click={() => setFont('serif')}>Serif</button>
-          <button class="font-option" class:active={$settings.fontFamily === 'sans'} on:click={() => setFont('sans')}>Sans</button>
+      {#if showHeadingMenu}
+        <div class="dropdown-menu">
+          <button class="dropdown-item" class:active={activeFormats.heading === null || activeFormats.heading === 0} on:click={() => setHeading(0)}>Body</button>
+          <button class="dropdown-item" class:active={activeFormats.heading === 1} on:click={() => setHeading(1)}>Title</button>
+          <button class="dropdown-item" class:active={activeFormats.heading === 2} on:click={() => setHeading(2)}>Heading</button>
+          <button class="dropdown-item" class:active={activeFormats.heading === 3} on:click={() => setHeading(3)}>Subheading</button>
         </div>
       {/if}
     </div>
 
-    <div class="font-size-control">
-      <button class="size-btn" on:click={() => adjustFontSize(-1)} title="Decrease font size">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M5 12h14"/>
+    <div class="divider"></div>
+
+    <div class="dropdown-container">
+      <button
+        class="dropdown-btn"
+        on:click|stopPropagation={() => showFontMenu = !showFontMenu}
+        title="Font family"
+      >
+        {fontLabel}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6"/>
         </svg>
       </button>
-      <span class="size-value">{$settings.fontSize}</span>
-      <button class="size-btn" on:click={() => adjustFontSize(1)} title="Increase font size">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 5v14M5 12h14"/>
-        </svg>
-      </button>
+      {#if showFontMenu}
+        <div class="dropdown-menu">
+          <button class="dropdown-item" class:active={$settings.fontFamily === 'mono'} on:click={() => setFont('mono')}>Mono</button>
+          <button class="dropdown-item" class:active={$settings.fontFamily === 'serif'} on:click={() => setFont('serif')}>Serif</button>
+          <button class="dropdown-item" class:active={$settings.fontFamily === 'sans'} on:click={() => setFont('sans')}>Sans</button>
+        </div>
+      {/if}
     </div>
 
-    <div class="format-divider"></div>
+    <div class="size-control">
+      <button class="size-btn" on:click={() => adjustFontSize(-1)} title="Decrease font size">−</button>
+      <span class="size-value">{$settings.fontSize}</span>
+      <button class="size-btn" on:click={() => adjustFontSize(1)} title="Increase font size">+</button>
+    </div>
+
+    <div class="divider"></div>
 
     <button
       class="mode-btn"
       class:active={$settings.focusMode}
       on:click={toggleFocusMode}
-      title="Focus Mode - dims other paragraphs"
+      title="Focus Mode"
     >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3"/>
-        <circle cx="12" cy="12" r="10"/>
-      </svg>
       Focus
     </button>
     <button
       class="mode-btn"
       class:active={$settings.typewriterMode}
       on:click={toggleTypewriterMode}
-      title="Typewriter Mode - keeps cursor centered"
+      title="Typewriter Mode"
     >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="2" y="4" width="20" height="16" rx="2"/>
-        <line x1="6" y1="8" x2="18" y2="8"/>
-        <line x1="6" y1="12" x2="18" y2="12"/>
-        <line x1="6" y1="16" x2="12" y2="16"/>
-      </svg>
       Typewriter
     </button>
   </div>
 
   <div class="toolbar-right">
-    <div class="export-container">
+    <div class="dropdown-container">
       <button
         class="export-btn"
         on:click|stopPropagation={() => showExportMenu = !showExportMenu}
         title="Export document"
         aria-expanded={showExportMenu}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
         Export
       </button>
 
       {#if showExportMenu}
-        <div class="export-menu" role="menu">
-          <button class="menu-item" on:click={() => handleExport('md')} role="menuitem">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            Export as .md
-          </button>
-          <button class="menu-item" on:click={() => handleExport('txt')} role="menuitem">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="9" y1="13" x2="15" y2="13"/>
-              <line x1="9" y1="17" x2="13" y2="17"/>
-            </svg>
-            Export as .txt
-          </button>
+        <div class="dropdown-menu right">
+          <button class="dropdown-item" on:click={() => handleExport('md')}>Export as .md</button>
+          <button class="dropdown-item" on:click={() => handleExport('txt')}>Export as .txt</button>
         </div>
       {/if}
     </div>
@@ -369,21 +330,9 @@
       title="Settings"
       aria-label="Settings"
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </button>
-
-    <button
-      class="icon-btn danger"
-      on:click={handleDelete}
-      title="Delete document"
-      aria-label="Delete document"
-    >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="3 6 5 6 21 6"/>
-        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
       </svg>
     </button>
   </div>
@@ -394,10 +343,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-2) var(--space-4);
     background: var(--color-bg-secondary);
     border-bottom: 1px solid var(--color-border-light);
-    height: 64px;
+    height: 52px;
     flex-shrink: 0;
     gap: var(--space-3);
   }
@@ -412,7 +361,7 @@
   .toolbar-center {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-2);
     flex: 1;
     justify-content: center;
   }
@@ -421,9 +370,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-lg);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
     color: var(--color-text-secondary);
     transition: all var(--transition-fast);
     flex-shrink: 0;
@@ -434,60 +383,28 @@
     color: var(--color-text-primary);
   }
 
-  .icon-btn.danger:hover {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-  }
-
-  .title-btn {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-md);
-    transition: background var(--transition-fast);
-    max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .title-btn:hover {
+  .format-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
     background: var(--color-bg-tertiary);
-  }
-
-  .title-input {
-    font-size: 1rem;
-    font-weight: 600;
-    padding: var(--space-2) var(--space-3);
-    border: 2px solid var(--color-accent);
     border-radius: var(--radius-md);
-    width: 180px;
-    background: var(--color-bg-primary);
-    color: var(--color-text-primary);
+    padding: 2px;
   }
 
-  .title-input:focus {
-    box-shadow: var(--glow-accent);
-  }
-
-  /* Format buttons */
   .format-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 36px;
-    height: 36px;
-    padding: 0 var(--space-2);
-    border-radius: var(--radius-md);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
     color: var(--color-text-secondary);
-    font-size: var(--font-size-xs);
-    font-weight: 700;
     transition: all var(--transition-fast);
   }
 
   .format-btn:hover {
-    background: var(--color-bg-tertiary);
+    background: var(--color-bg-secondary);
     color: var(--color-text-primary);
   }
 
@@ -496,45 +413,36 @@
     color: white;
   }
 
-  .format-btn.active:hover {
-    box-shadow: var(--glow-accent);
-  }
-
-  .heading-btn {
-    font-size: 0.75rem;
-    min-width: 32px;
-  }
-
-  .format-divider {
+  .divider {
     width: 1px;
     height: 24px;
     background: var(--color-border);
-    margin: 0 var(--space-2);
+    margin: 0 var(--space-1);
   }
 
-  /* Font selector */
-  .font-container {
+  .dropdown-container {
     position: relative;
   }
 
-  .font-select-btn {
+  .dropdown-btn {
     display: flex;
     align-items: center;
     gap: var(--space-1);
-    padding: var(--space-2) var(--space-3);
+    height: 36px;
+    padding: 0 var(--space-3);
     background: var(--color-bg-tertiary);
     border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
     transition: all var(--transition-fast);
   }
 
-  .font-select-btn:hover {
-    color: var(--color-text-primary);
+  .dropdown-btn:hover {
+    background: var(--color-border);
   }
 
-  .font-menu {
+  .dropdown-menu {
     position: absolute;
     top: calc(100% + 4px);
     left: 50%;
@@ -545,47 +453,80 @@
     box-shadow: var(--shadow-lg);
     padding: var(--space-1);
     z-index: 100;
+    min-width: 120px;
+    animation: menuPop var(--transition-fast) ease-out;
   }
 
-  .font-option {
+  .dropdown-menu.right {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+
+  @keyframes menuPop {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  .dropdown-menu.right {
+    animation: menuPopRight var(--transition-fast) ease-out;
+  }
+
+  @keyframes menuPopRight {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .dropdown-item {
     display: block;
     width: 100%;
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-2) var(--space-3);
     font-size: var(--font-size-sm);
     color: var(--color-text-primary);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     text-align: left;
-    white-space: nowrap;
     transition: background var(--transition-fast);
   }
 
-  .font-option:hover {
+  .dropdown-item:hover {
     background: var(--color-bg-tertiary);
   }
 
-  .font-option.active {
+  .dropdown-item.active {
     background: var(--color-accent);
     color: white;
   }
 
-  /* Font size control */
-  .font-size-control {
+  .size-control {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    height: 36px;
     background: var(--color-bg-tertiary);
     border-radius: var(--radius-md);
-    padding: var(--space-1);
+    overflow: hidden;
   }
 
   .size-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: var(--radius-sm);
+    width: 32px;
+    height: 100%;
     color: var(--color-text-secondary);
+    font-size: 1rem;
+    font-weight: 500;
     transition: all var(--transition-fast);
   }
 
@@ -595,24 +536,21 @@
   }
 
   .size-value {
-    font-size: var(--font-size-xs);
-    font-weight: 600;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
     color: var(--color-text-primary);
-    min-width: 24px;
+    min-width: 28px;
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
 
-  /* Mode buttons */
   .mode-btn {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    height: 36px;
+    padding: 0 var(--space-3);
     border-radius: var(--radius-md);
     color: var(--color-text-secondary);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
     transition: all var(--transition-fast);
   }
 
@@ -626,25 +564,14 @@
     color: white;
   }
 
-  .mode-btn.active:hover {
-    box-shadow: var(--glow-accent);
-  }
-
-  /* Export dropdown */
-  .export-container {
-    position: relative;
-  }
-
   .export-btn {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    height: 36px;
+    padding: 0 var(--space-4);
     background: var(--color-accent);
     color: white;
     border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
-    font-weight: 600;
+    font-weight: 500;
     transition: all var(--transition-fast);
   }
 
@@ -653,51 +580,46 @@
     box-shadow: var(--glow-accent);
   }
 
-  .export-menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
-    min-width: 180px;
-    padding: var(--space-2);
-    z-index: 1000;
-    animation: menuPop var(--transition-fast) ease-out;
-  }
-
-  @keyframes menuPop {
-    from {
-      opacity: 0;
-      transform: scale(0.95) translateY(-4px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-  }
-
-  .menu-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    width: 100%;
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-primary);
-    border-radius: var(--radius-lg);
-    transition: background var(--transition-fast);
-    text-align: left;
-  }
-
-  .menu-item:hover {
-    background: var(--color-bg-tertiary);
-  }
-
   @media (max-width: 900px) {
+    .mode-btn {
+      display: none;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .toolbar-center {
+      gap: var(--space-1);
+    }
+    .divider {
+      display: none;
+    }
+    .dropdown-btn {
+      padding: 0 var(--space-2);
+    }
+    .size-control {
+      display: none;
+    }
+  }
+
+  @media (max-width: 500px) {
+    .toolbar {
+      padding: var(--space-2);
+    }
     .toolbar-center {
       display: none;
+    }
+    .export-btn {
+      padding: 0 var(--space-3);
+      font-size: var(--font-size-xs);
+    }
+  }
+
+  /* Safe area support for mobile */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .toolbar {
+      padding-top: max(var(--space-2), env(safe-area-inset-top));
+      padding-left: max(var(--space-4), env(safe-area-inset-left));
+      padding-right: max(var(--space-4), env(safe-area-inset-right));
     }
   }
 </style>

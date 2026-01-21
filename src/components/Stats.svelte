@@ -13,8 +13,8 @@
   {/if}
 
   {#if $settings.showReadingTime && stats.words > 0}
-    <span class="stat" aria-label="Estimated reading time">
-      {formatTime(stats.readingTimeSeconds)} read
+    <span class="stat" aria-label="Estimated speaking time">
+      {formatTime(stats.speakingTimeSeconds)}
     </span>
   {/if}
 </div>

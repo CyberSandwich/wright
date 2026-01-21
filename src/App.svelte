@@ -14,6 +14,8 @@
   let activeFormats = {
     bold: false,
     italic: false,
+    underline: false,
+    strikethrough: false,
     heading: null as number | null
   };
 
@@ -29,12 +31,16 @@
       editorRef?.toggleBold();
     } else if (type === 'italic') {
       editorRef?.toggleItalic();
+    } else if (type === 'underline') {
+      editorRef?.toggleUnderline();
+    } else if (type === 'strikethrough') {
+      editorRef?.toggleStrikethrough();
     } else if (type === 'heading' && level !== undefined) {
       editorRef?.setHeading(level);
     }
   }
 
-  function handleFormatChange(event: CustomEvent<{ bold: boolean; italic: boolean; heading: number | null }>) {
+  function handleFormatChange(event: CustomEvent<{ bold: boolean; italic: boolean; underline: boolean; strikethrough: boolean; heading: number | null }>) {
     activeFormats = event.detail;
   }
 </script>

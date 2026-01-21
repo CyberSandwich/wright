@@ -1,6 +1,6 @@
 <script lang="ts">
   import { documents, currentDocumentId, loadDocument, newDocument, deleteCurrentDocument } from '../stores/documents';
-  import { settings } from '../stores/settings';
+  import { settings, toggleSidebar } from '../stores/settings';
   import { createDocument, deleteDocument, getDocument, getAllDocuments } from '../lib/db';
   import { fileSave } from 'browser-fs-access';
   import type { Document } from '../lib/db';
@@ -22,6 +22,8 @@
   function handleDocumentClick(doc: Document) {
     if (doc.id && openMenuId !== doc.id) {
       loadDocument(doc.id);
+      // Close sidebar after selecting document
+      toggleSidebar();
     }
   }
 
@@ -32,6 +34,16 @@
 
   function closeMenus() {
     openMenuId = null;
+  }
+
+  function handleBackdropClick() {
+    toggleSidebar();
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape' && $settings.sidebarOpen) {
+      toggleSidebar();
+    }
   }
 
   async function handleDeleteDoc(e: MouseEvent, doc: Document) {
@@ -144,17 +156,24 @@
   }
 </script>
 
-<svelte:window on:click={closeMenus} />
+<svelte:window on:click={closeMenus} on:keydown={handleKeydown} />
 
 {#if $settings.sidebarOpen}
-  <aside
-    class="sidebar"
-    class:drag-over={isDragOver}
-    aria-label="Document library"
-    on:dragover={handleDragOver}
-    on:dragleave={handleDragLeave}
-    on:drop={handleDrop}
-  >
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div class="sidebar-backdrop" on:click={handleBackdropClick} role="presentation">
+    <div
+      class="sidebar-popup"
+      class:drag-over={isDragOver}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Document library"
+      tabindex="-1"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+      on:dragover={handleDragOver}
+      on:dragleave={handleDragLeave}
+      on:drop={handleDrop}
+    >
     <div class="sidebar-content">
       {#if isDragOver}
         <div class="drop-indicator">
@@ -198,7 +217,7 @@
               </button>
 
               {#if openMenuId === doc.id}
-                <div class="doc-menu" role="menu" on:click|stopPropagation on:keydown|stopPropagation>
+                <div class="doc-menu" role="menu" tabindex="-1" on:click|stopPropagation on:keydown|stopPropagation>
                   <button class="doc-menu-item" on:click={(e) => handleExportDoc(e, doc, 'md')}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -264,34 +283,78 @@
         </button>
       </div>
     {/if}
-  </aside>
+    </div>
+  </div>
 {/if}
 
 <style>
-  .sidebar {
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .sidebar-popup {
+    position: absolute;
+    top: var(--space-4);
+    left: var(--space-4);
+    bottom: var(--space-4);
     display: flex;
     flex-direction: column;
-    width: var(--sidebar-width);
-    height: 100%;
+    width: 320px;
+    max-width: calc(100vw - var(--space-8));
+    max-height: calc(100vh - var(--space-8));
+    max-height: calc(100dvh - var(--space-8));
     background: var(--sidebar-bg);
-    border-right: 1px solid var(--color-border-light);
-    flex-shrink: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-xl);
     animation: slideIn var(--transition-normal) ease-out;
     transition: background var(--transition-fast);
+    overflow: hidden;
+  }
+
+  /* Mobile adjustments */
+  @media (max-width: 480px) {
+    .sidebar-popup {
+      top: var(--space-2);
+      left: var(--space-2);
+      right: var(--space-2);
+      bottom: var(--space-2);
+      width: auto;
+      max-width: none;
+    }
+  }
+
+  /* Safe area support */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .sidebar-popup {
+      top: max(var(--space-4), env(safe-area-inset-top));
+      left: max(var(--space-4), env(safe-area-inset-left));
+      bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    }
   }
 
   @keyframes slideIn {
     from {
       opacity: 0;
-      transform: translateX(-20px);
+      transform: translateX(-20px) scale(0.95);
     }
     to {
       opacity: 1;
-      transform: translateX(0);
+      transform: translateX(0) scale(1);
     }
   }
 
-  .sidebar.drag-over {
+  .sidebar-popup.drag-over {
     background: var(--color-bg-tertiary);
   }
 
@@ -379,7 +442,8 @@
   .document-list {
     flex: 1;
     overflow-y: auto;
-    padding: 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    -webkit-overflow-scrolling: touch;
   }
 
   .document-item-wrapper {
