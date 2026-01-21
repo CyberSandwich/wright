@@ -1,6 +1,6 @@
 <script lang="ts">
   import { currentDocument, saveNow } from '../stores/documents';
-  import { settings, toggleSidebar, updateSetting, toggleFocusMode, toggleTypewriterMode, type FontFamily } from '../stores/settings';
+  import { settings, toggleSidebar, updateSetting, toggleFocusMode, toggleTypewriterMode, type FontFamily, type AccentColor } from '../stores/settings';
   import { openModal } from '../stores/ui';
   import { fileSave } from 'browser-fs-access';
   import { createEventDispatcher } from 'svelte';
@@ -10,6 +10,17 @@
   let showExportMenu = false;
   let showFontMenu = false;
   let showHeadingMenu = false;
+  let showColorMenu = false;
+
+  const accentColors: { id: AccentColor; color: string }[] = [
+    { id: 'blue', color: '#58a6ff' },
+    { id: 'purple', color: '#a78bfa' },
+    { id: 'pink', color: '#f472b6' },
+    { id: 'red', color: '#f87171' },
+    { id: 'orange', color: '#fb923c' },
+    { id: 'green', color: '#4ade80' },
+    { id: 'teal', color: '#2dd4bf' }
+  ];
 
   // Active format states (updated by Editor)
   export let activeFormats: {
@@ -121,6 +132,12 @@
     showExportMenu = false;
     showFontMenu = false;
     showHeadingMenu = false;
+    showColorMenu = false;
+  }
+
+  function setAccentColor(color: AccentColor) {
+    updateSetting('accentColor', color);
+    showColorMenu = false;
   }
 
   function toggleBold() {
@@ -182,6 +199,32 @@
         </svg>
       {/if}
     </button>
+
+    <div class="dropdown-container">
+      <button
+        class="color-picker-btn"
+        on:click|stopPropagation={() => showColorMenu = !showColorMenu}
+        title="Accent color"
+        aria-label="Change accent color"
+      >
+        <span class="color-dot" style="background: var(--color-accent)"></span>
+      </button>
+      {#if showColorMenu}
+        <div class="color-menu">
+          {#each accentColors as { id, color }}
+            <button
+              class="color-option"
+              class:active={$settings.accentColor === id}
+              style="--option-color: {color}"
+              on:click={() => setAccentColor(id)}
+              aria-label="{id} color"
+            >
+              <span class="color-swatch"></span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
   </div>
 
   <div class="toolbar-center">
@@ -427,6 +470,7 @@
   .dropdown-btn {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: var(--space-1);
     height: 36px;
     padding: 0 var(--space-3);
@@ -435,6 +479,7 @@
     color: var(--color-text-primary);
     font-size: var(--font-size-sm);
     font-weight: 500;
+    line-height: 1;
     transition: all var(--transition-fast);
   }
 
@@ -545,12 +590,16 @@
   }
 
   .mode-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     height: 36px;
     padding: 0 var(--space-3);
     border-radius: var(--radius-md);
     color: var(--color-text-secondary);
     font-size: var(--font-size-sm);
     font-weight: 500;
+    line-height: 1;
     transition: all var(--transition-fast);
   }
 
@@ -578,6 +627,73 @@
   .export-btn:hover {
     background: var(--color-accent-hover);
     box-shadow: var(--glow-accent);
+  }
+
+  /* Color picker */
+  .color-picker-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+  }
+
+  .color-picker-btn:hover {
+    background: var(--color-bg-tertiary);
+  }
+
+  .color-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-full);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2), var(--shadow-sm);
+  }
+
+  .color-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    animation: menuPop var(--transition-fast) ease-out;
+  }
+
+  .color-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+  }
+
+  .color-option:hover {
+    transform: scale(1.1);
+  }
+
+  .color-option.active {
+    background: var(--color-bg-tertiary);
+  }
+
+  .color-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-full);
+    background: var(--option-color);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1), var(--shadow-sm);
+  }
+
+  .color-option.active .color-swatch {
+    box-shadow: 0 0 0 2px var(--color-bg-secondary), 0 0 0 4px var(--option-color);
   }
 
   @media (max-width: 900px) {

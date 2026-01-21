@@ -44,6 +44,9 @@
   }, 300);
 
   // Debounced syntax highlighting to avoid performance issues
+  let syntaxObserver: MutationObserver | null = null;
+  let lastSyntaxContent = '';
+
   const applySyntaxHighlightingDebounced = debounce((content: string) => {
     if (!editorContainer) return;
     const proseMirror = editorContainer.querySelector('.ProseMirror');
@@ -51,10 +54,23 @@
 
     if ($settings.syntaxHighlight === 'off') {
       clearSyntaxHighlighting(proseMirror as HTMLElement);
-    } else {
-      applySyntaxHighlighting(proseMirror as HTMLElement, content, $settings.syntaxHighlight);
+      return;
     }
-  }, 500);
+
+    // Store content for re-application
+    lastSyntaxContent = content;
+
+    // Apply highlighting after a frame to ensure ProseMirror has rendered
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!editorContainer) return;
+        const pm = editorContainer.querySelector('.ProseMirror');
+        if (pm) {
+          applySyntaxHighlighting(pm as HTMLElement, lastSyntaxContent, $settings.syntaxHighlight);
+        }
+      });
+    });
+  }, 300);
 
   function triggerTypingEffect() {
     isTyping = true;
@@ -107,6 +123,8 @@
   }
 
   // Focus mode - dim non-active paragraphs
+  let lastActiveBlock: Element | null = null;
+
   function applyFocusMode() {
     if (!editorContainer || !$settings.focusMode) return;
 
@@ -114,11 +132,7 @@
     if (!proseMirror) return;
 
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      // No selection, clear focus mode styling
-      clearFocusMode();
-      return;
-    }
+    if (!selection || selection.rangeCount === 0) return;
 
     const range = selection.getRangeAt(0);
     let activeBlock: Element | null = null;
@@ -142,34 +156,37 @@
       node = node.parentNode;
     }
 
-    // Get all block elements
-    const blocks = proseMirror.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre');
+    // Only update if active block changed
+    if (activeBlock === lastActiveBlock) return;
+    lastActiveBlock = activeBlock;
 
+    // Remove active class from all blocks, add to active one
+    const blocks = proseMirror.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre');
     blocks.forEach((block) => {
-      const el = block as HTMLElement;
-      if (block === activeBlock) {
-        el.style.opacity = '1';
-        el.style.transition = 'opacity 0.15s ease';
-      } else {
-        el.style.opacity = '0.25';
-        el.style.transition = 'opacity 0.15s ease';
-      }
+      block.classList.remove('focus-active');
     });
+
+    if (activeBlock) {
+      activeBlock.classList.add('focus-active');
+    }
   }
 
   function clearFocusMode() {
     if (!editorContainer) return;
+    lastActiveBlock = null;
     const blocks = editorContainer.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre');
     blocks.forEach((block) => {
-      (block as HTMLElement).style.opacity = '1';
+      block.classList.remove('focus-active');
     });
   }
 
   // Typewriter mode - keep cursor vertically centered
   let scrollArea: HTMLElement | null = null;
+  let typewriterScrollTimeout: ReturnType<typeof setTimeout> | null = null;
+  let isScrolling = false;
 
   function applyTypewriterMode() {
-    if (!$settings.typewriterMode) return;
+    if (!$settings.typewriterMode || isScrolling) return;
 
     // Get the scroll area element
     if (!scrollArea) {
@@ -177,38 +194,45 @@
     }
     if (!scrollArea) return;
 
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    const range = selection.getRangeAt(0);
-
-    // Create a temporary span to get accurate cursor position
-    const tempSpan = document.createElement('span');
-    tempSpan.textContent = '\u200B'; // Zero-width space
-
-    // Clone range and insert span at cursor
-    const clonedRange = range.cloneRange();
-    clonedRange.collapse(true);
-    clonedRange.insertNode(tempSpan);
-
-    const rect = tempSpan.getBoundingClientRect();
-    const scrollAreaRect = scrollArea.getBoundingClientRect();
-
-    // Remove the temp span
-    tempSpan.remove();
-
-    // Calculate target position (center of scroll area)
-    const targetY = scrollAreaRect.height / 2;
-    const cursorRelativeY = rect.top - scrollAreaRect.top;
-    const diff = cursorRelativeY - targetY;
-
-    // Smoothly scroll to keep cursor centered
-    if (Math.abs(diff) > 10) {
-      scrollArea.scrollBy({
-        top: diff,
-        behavior: 'smooth'
-      });
+    // Debounce to prevent jittering
+    if (typewriterScrollTimeout) {
+      clearTimeout(typewriterScrollTimeout);
     }
+
+    typewriterScrollTimeout = setTimeout(() => {
+      if (!scrollArea) return;
+
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+
+      const range = selection.getRangeAt(0);
+      const rects = range.getClientRects();
+
+      // Use the first rect if available, otherwise fall back to range rect
+      const rect = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
+      if (!rect || rect.height === 0) return;
+
+      const scrollAreaRect = scrollArea.getBoundingClientRect();
+
+      // Calculate target position (center of scroll area)
+      const targetY = scrollAreaRect.height / 2;
+      const cursorRelativeY = rect.top - scrollAreaRect.top;
+      const diff = cursorRelativeY - targetY;
+
+      // Only scroll if cursor is significantly off-center
+      if (Math.abs(diff) > 30) {
+        isScrolling = true;
+        scrollArea.scrollBy({
+          top: diff,
+          behavior: 'smooth'
+        });
+
+        // Reset scrolling flag after animation
+        setTimeout(() => {
+          isScrolling = false;
+        }, 200);
+      }
+    }, 50);
   }
 
   function handleSelectionChange() {
@@ -366,13 +390,13 @@
   {#if $settings.showWordCount || $settings.showLetterCount || $settings.showReadingTime}
     <div class="stats-bubble" class:typing={isTyping}>
       {#if $settings.showWordCount}
-        <span>{stats.words} words</span>
+        <span>{stats.words} {stats.words === 1 ? 'word' : 'words'}</span>
       {/if}
       {#if $settings.showWordCount && $settings.showLetterCount}
         <span class="stats-dot">·</span>
       {/if}
       {#if $settings.showLetterCount}
-        <span>{stats.charactersNoSpaces} letters</span>
+        <span>{stats.charactersNoSpaces} {stats.charactersNoSpaces === 1 ? 'letter' : 'letters'}</span>
       {/if}
       {#if ($settings.showWordCount || $settings.showLetterCount) && $settings.showReadingTime && stats.words > 0}
         <span class="stats-dot">·</span>
@@ -644,5 +668,24 @@
 
   .editor-container[data-syntax-mode] :global(.syntax-hl) {
     font-weight: 500;
+  }
+
+  /* Focus mode - dim non-active blocks */
+  .editor-container.focus-mode :global(.milkdown p),
+  .editor-container.focus-mode :global(.milkdown h1),
+  .editor-container.focus-mode :global(.milkdown h2),
+  .editor-container.focus-mode :global(.milkdown h3),
+  .editor-container.focus-mode :global(.milkdown h4),
+  .editor-container.focus-mode :global(.milkdown h5),
+  .editor-container.focus-mode :global(.milkdown h6),
+  .editor-container.focus-mode :global(.milkdown li),
+  .editor-container.focus-mode :global(.milkdown blockquote),
+  .editor-container.focus-mode :global(.milkdown pre) {
+    opacity: 0.25;
+    transition: opacity 0.15s ease;
+  }
+
+  .editor-container.focus-mode :global(.milkdown .focus-active) {
+    opacity: 1;
   }
 </style>

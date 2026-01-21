@@ -6,6 +6,8 @@ export type FontFamily = 'mono' | 'serif' | 'sans';
 
 export type SyntaxHighlightMode = 'off' | 'nouns' | 'verbs' | 'adjectives' | 'adverbs' | 'conjunctions';
 
+export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal';
+
 export interface Settings {
   theme: Theme;
   fontFamily: FontFamily;
@@ -19,6 +21,7 @@ export interface Settings {
   sidebarOpen: boolean;
   showFormatting: boolean;
   syntaxHighlight: SyntaxHighlightMode;
+  accentColor: AccentColor;
 }
 
 const defaultSettings: Settings = {
@@ -33,7 +36,8 @@ const defaultSettings: Settings = {
   showReadingTime: true,
   sidebarOpen: false,
   showFormatting: false,
-  syntaxHighlight: 'off'
+  syntaxHighlight: 'off',
+  accentColor: 'blue'
 };
 
 export const settings = writable<Settings>(defaultSettings);
@@ -41,6 +45,11 @@ export const settings = writable<Settings>(defaultSettings);
 // Apply theme to document
 function applyTheme(theme: Theme): void {
   document.documentElement.setAttribute('data-theme', theme);
+}
+
+// Apply accent color to document
+function applyAccentColor(color: AccentColor): void {
+  document.documentElement.setAttribute('data-accent', color);
 }
 
 // Load settings from IndexedDB
@@ -53,6 +62,7 @@ export async function loadSettings(): Promise<void> {
   const merged = { ...defaultSettings, ...savedSettings };
   settings.set(merged);
   applyTheme(merged.theme);
+  applyAccentColor(merged.accentColor);
 }
 
 // Save settings to IndexedDB
@@ -66,6 +76,9 @@ export async function updateSetting<K extends keyof Settings>(key: K, value: Set
 
   if (key === 'theme') {
     applyTheme(value as Theme);
+  }
+  if (key === 'accentColor') {
+    applyAccentColor(value as AccentColor);
   }
 
   await saveSettings();

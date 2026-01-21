@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { initializeDocuments, currentDocument } from './stores/documents';
-  import { loadSettings } from './stores/settings';
+  import { loadSettings, settings, toggleFocusMode } from './stores/settings';
   import Sidebar from './components/Sidebar.svelte';
   import Toolbar from './components/Toolbar.svelte';
   import Editor from './components/Editor.svelte';
@@ -43,7 +43,16 @@
   function handleFormatChange(event: CustomEvent<{ bold: boolean; italic: boolean; underline: boolean; strikethrough: boolean; heading: number | null }>) {
     activeFormats = event.detail;
   }
+
+  function handleKeyDown(event: KeyboardEvent) {
+    // Exit focus mode with Escape
+    if (event.key === 'Escape' && $settings.focusMode) {
+      toggleFocusMode();
+    }
+  }
 </script>
+
+<svelte:window on:keydown={handleKeyDown} />
 
 <svelte:head>
   <title>{$currentDocument?.title || 'Wright'} - Wright</title>
@@ -55,13 +64,30 @@
     <p>Loading...</p>
   </div>
 {:else}
-  <div class="app">
-    <Sidebar />
+  <div class="app" class:focus-mode={$settings.focusMode}>
+    {#if !$settings.focusMode}
+      <Sidebar />
+    {/if}
     <main class="main-content">
-      <Toolbar {activeFormats} on:format={handleFormat} />
+      {#if !$settings.focusMode}
+        <Toolbar {activeFormats} on:format={handleFormat} />
+      {/if}
       <Editor bind:this={editorRef} on:formatchange={handleFormatChange} />
     </main>
   </div>
+
+  {#if $settings.focusMode}
+    <button
+      class="exit-focus-btn"
+      on:click={toggleFocusMode}
+      title="Exit Focus Mode (Escape)"
+      aria-label="Exit Focus Mode"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M18 6L6 18M6 6l12 12"/>
+      </svg>
+    </button>
+  {/if}
 
   <SettingsModal />
   <DeleteConfirmModal />
@@ -108,5 +134,39 @@
 
   @keyframes spin {
     to { transform: rotate(360deg); }
+  }
+
+  /* Focus mode exit button */
+  .exit-focus-btn {
+    position: fixed;
+    top: var(--space-4);
+    right: var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    color: var(--color-text-secondary);
+    opacity: 0.3;
+    transition: all var(--transition-fast);
+    z-index: 100;
+    box-shadow: var(--shadow-md);
+  }
+
+  .exit-focus-btn:hover {
+    opacity: 1;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    box-shadow: var(--shadow-lg);
+  }
+
+  @supports (top: env(safe-area-inset-top)) {
+    .exit-focus-btn {
+      top: max(var(--space-4), env(safe-area-inset-top));
+      right: max(var(--space-4), env(safe-area-inset-right));
+    }
   }
 </style>
