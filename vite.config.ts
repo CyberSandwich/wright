@@ -3,7 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  base: '/Wright/',
+  base: '/wright/',
   plugins: [
     svelte(),
     VitePWA({
@@ -16,8 +16,8 @@ export default defineConfig({
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
-        start_url: '/Wright/',
-        scope: '/Wright/',
+        start_url: '/wright/',
+        scope: '/wright/',
         icons: [
           {
             src: 'icon-192.png',
