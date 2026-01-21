@@ -13,6 +13,10 @@
       closeModal();
     }
   }
+
+  function setTheme(theme: Theme) {
+    updateSetting('theme', theme);
+  }
 </script>
 
 <svelte:window on:keydown={handleKeyDown} />
@@ -47,32 +51,66 @@
           <h3>Appearance</h3>
 
           <div class="setting-row">
-            <label for="theme-select">Theme</label>
-            <select
-              id="theme-select"
-              value={$settings.theme}
-              on:change={(e) => updateSetting('theme', e.currentTarget.value as Theme)}
-            >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
+            <span class="setting-label">Theme</span>
+            <div class="theme-buttons">
+              <button
+                class="theme-btn"
+                class:active={$settings.theme === 'light'}
+                on:click={() => setTheme('light')}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/>
+                  <line x1="21" y1="12" x2="23" y2="12"/>
+                </svg>
+                Light
+              </button>
+              <button
+                class="theme-btn"
+                class:active={$settings.theme === 'dark'}
+                on:click={() => setTheme('dark')}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+                Dark
+              </button>
+            </div>
           </div>
 
           <div class="setting-row">
-            <label for="font-select">Font</label>
-            <select
-              id="font-select"
-              value={$settings.fontFamily}
-              on:change={(e) => updateSetting('fontFamily', e.currentTarget.value as FontFamily)}
-            >
-              <option value="mono">Monospace</option>
-              <option value="serif">Serif</option>
-              <option value="sans">Sans-serif</option>
-            </select>
+            <span class="setting-label">Font</span>
+            <div class="font-buttons">
+              <button
+                class="font-btn"
+                class:active={$settings.fontFamily === 'mono'}
+                on:click={() => updateSetting('fontFamily', 'mono')}
+              >
+                Mono
+              </button>
+              <button
+                class="font-btn"
+                class:active={$settings.fontFamily === 'serif'}
+                on:click={() => updateSetting('fontFamily', 'serif')}
+              >
+                Serif
+              </button>
+              <button
+                class="font-btn"
+                class:active={$settings.fontFamily === 'sans'}
+                on:click={() => updateSetting('fontFamily', 'sans')}
+              >
+                Sans
+              </button>
+            </div>
           </div>
 
-          <div class="setting-row">
-            <label for="font-size">Font Size</label>
+          <div class="setting-row slider-row">
+            <span class="setting-label">Font Size</span>
             <div class="slider-group">
               <input
                 id="font-size"
@@ -86,8 +124,8 @@
             </div>
           </div>
 
-          <div class="setting-row">
-            <label for="line-height">Line Height</label>
+          <div class="setting-row slider-row">
+            <span class="setting-label">Line Height</span>
             <div class="slider-group">
               <input
                 id="line-height"
@@ -98,39 +136,35 @@
                 value={$settings.lineHeight}
                 on:input={(e) => updateSetting('lineHeight', parseFloat(e.currentTarget.value))}
               />
-              <span class="slider-value">{$settings.lineHeight}</span>
+              <span class="slider-value">{$settings.lineHeight.toFixed(1)}</span>
             </div>
           </div>
         </section>
 
         <section class="settings-section">
-          <h3>Statistics</h3>
+          <h3>Display</h3>
 
-          <div class="setting-row">
-            <label for="show-word-count">Show Word Count</label>
+          <div class="setting-row toggle-row">
+            <span class="setting-label">Word Count</span>
             <button
-              id="show-word-count"
               class="toggle"
               class:active={$settings.showWordCount}
               on:click={() => updateSetting('showWordCount', !$settings.showWordCount)}
               role="switch"
               aria-checked={$settings.showWordCount}
-              aria-label="Toggle word count display"
             >
               <span class="toggle-slider"></span>
             </button>
           </div>
 
-          <div class="setting-row">
-            <label for="show-reading-time">Show Reading Time</label>
+          <div class="setting-row toggle-row">
+            <span class="setting-label">Reading Time</span>
             <button
-              id="show-reading-time"
               class="toggle"
               class:active={$settings.showReadingTime}
               on:click={() => updateSetting('showReadingTime', !$settings.showReadingTime)}
               role="switch"
               aria-checked={$settings.showReadingTime}
-              aria-label="Toggle reading time display"
             >
               <span class="toggle-slider"></span>
             </button>
@@ -146,12 +180,12 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    animation: fadeIn 0.15s ease;
+    animation: fadeIn 0.2s ease;
   }
 
   @keyframes fadeIn {
@@ -162,21 +196,21 @@
   .modal {
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-xl);
     width: 90%;
-    max-width: 440px;
+    max-width: 480px;
     max-height: 85vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    animation: slideUp 0.2s ease;
+    animation: slideUp 0.25s ease;
   }
 
   @keyframes slideUp {
     from {
       opacity: 0;
-      transform: translateY(20px) scale(0.98);
+      transform: translateY(30px) scale(0.96);
     }
     to {
       opacity: 1;
@@ -188,12 +222,12 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-5) var(--space-6);
+    padding: var(--space-6);
     border-bottom: 1px solid var(--color-border-light);
   }
 
   .modal-header h2 {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 700;
     margin: 0;
   }
@@ -202,9 +236,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-md);
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-lg);
     color: var(--color-text-secondary);
     transition: all var(--transition-fast);
   }
@@ -215,12 +249,12 @@
   }
 
   .modal-body {
-    padding: var(--space-5) var(--space-6);
+    padding: var(--space-6);
     overflow-y: auto;
   }
 
   .settings-section {
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-8);
   }
 
   .settings-section:last-child {
@@ -233,65 +267,158 @@
     color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-5);
   }
 
   .setting-row {
+    margin-bottom: var(--space-5);
+  }
+
+  .setting-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .setting-label {
+    display: block;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-3);
+  }
+
+  /* Theme buttons */
+  .theme-buttons {
     display: flex;
-    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .theme-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    padding: var(--space-3) 0;
-  }
-
-  .setting-row label {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-primary);
-  }
-
-  .setting-row select {
-    padding: var(--space-2) var(--space-4);
-    padding-right: var(--space-6);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    gap: var(--space-2);
+    padding: var(--space-4);
     background: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
+    border: 2px solid transparent;
+    border-radius: var(--radius-xl);
+    color: var(--color-text-secondary);
     font-size: var(--font-size-sm);
-    cursor: pointer;
+    font-weight: 600;
     transition: all var(--transition-fast);
   }
 
-  .setting-row select:hover {
-    border-color: var(--color-accent);
+  .theme-btn:hover {
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
   }
 
-  .setting-row select:focus {
+  .theme-btn.active {
+    background: var(--color-accent);
     border-color: var(--color-accent);
+    color: white;
+  }
+
+  .theme-btn.active:hover {
     box-shadow: var(--glow-accent);
+  }
+
+  /* Font buttons */
+  .font-buttons {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .font-btn {
+    flex: 1;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-bg-tertiary);
+    border: 2px solid transparent;
+    border-radius: var(--radius-lg);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+  }
+
+  .font-btn:hover {
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+  }
+
+  .font-btn.active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: white;
+  }
+
+  .font-btn.active:hover {
+    box-shadow: var(--glow-accent);
+  }
+
+  /* Slider rows */
+  .slider-row .setting-label {
+    margin-bottom: var(--space-4);
   }
 
   .slider-group {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-4);
   }
 
   .slider-group input[type="range"] {
-    width: 100px;
-    accent-color: var(--color-accent);
+    flex: 1;
+    height: 8px;
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-full);
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .slider-group input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: var(--color-accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    transition: transform var(--transition-fast);
+  }
+
+  .slider-group input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: var(--glow-accent);
   }
 
   .slider-value {
     font-size: var(--font-size-sm);
+    font-weight: 600;
     color: var(--color-text-secondary);
-    min-width: 45px;
+    min-width: 50px;
     text-align: right;
     font-variant-numeric: tabular-nums;
+    background: var(--color-bg-tertiary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+  }
+
+  /* Toggle rows */
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .toggle-row .setting-label {
+    margin-bottom: 0;
   }
 
   .toggle {
     position: relative;
-    width: 48px;
-    height: 28px;
+    width: 56px;
+    height: 32px;
     background: var(--color-bg-tertiary);
     border-radius: var(--radius-full);
     transition: all var(--transition-fast);
@@ -304,15 +431,18 @@
 
   .toggle.active {
     background: var(--color-accent);
+  }
+
+  .toggle.active:hover {
     box-shadow: var(--glow-accent);
   }
 
   .toggle-slider {
     position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 22px;
-    height: 22px;
+    top: 4px;
+    left: 4px;
+    width: 24px;
+    height: 24px;
     background: white;
     border-radius: 50%;
     transition: transform var(--transition-fast);
@@ -320,6 +450,6 @@
   }
 
   .toggle.active .toggle-slider {
-    transform: translateX(20px);
+    transform: translateX(24px);
   }
 </style>

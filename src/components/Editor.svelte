@@ -1,13 +1,15 @@
 <script lang="ts">
-  import { onMount, onDestroy, tick } from 'svelte';
+  import { onMount, onDestroy, tick, createEventDispatcher } from 'svelte';
   import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from '@milkdown/core';
   import { commonmark, toggleStrongCommand, toggleEmphasisCommand, wrapInHeadingCommand } from '@milkdown/preset-commonmark';
   import { history } from '@milkdown/plugin-history';
   import { listener, listenerCtx } from '@milkdown/plugin-listener';
   import { callCommand } from '@milkdown/utils';
   import { currentDocument, currentDocumentId, updateContent } from '../stores/documents';
-  import { settings, toggleFocusMode, toggleTypewriterMode } from '../stores/settings';
+  import { settings } from '../stores/settings';
   import { calculateStats, debounce, formatTime, type TextStats } from '../lib/stats';
+
+  const dispatch = createEventDispatcher();
 
   let editorContainer: HTMLDivElement;
   let editorWrapper: HTMLDivElement;
@@ -20,13 +22,69 @@
     charactersNoSpaces: 0,
     sentences: 0,
     paragraphs: 0,
-    readingTimeSeconds: 0,
     speakingTimeSeconds: 0
+  };
+
+  // Typing effect state
+  let isTyping = false;
+  let typingTimeout: ReturnType<typeof setTimeout>;
+
+  // Active format states
+  let activeFormats = {
+    bold: false,
+    italic: false,
+    heading: null as number | null
   };
 
   const updateStats = debounce((content: string) => {
     stats = calculateStats(content);
   }, 300);
+
+  function triggerTypingEffect() {
+    isTyping = true;
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      isTyping = false;
+    }, 150);
+  }
+
+  // Detect current formatting at cursor position
+  function detectActiveFormats() {
+    if (!editorContainer) return;
+
+    const proseMirror = editorContainer.querySelector('.ProseMirror');
+    if (!proseMirror) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    let node: Node | null = range.startContainer;
+
+    // Reset states
+    let isBold = false;
+    let isItalic = false;
+    let headingLevel: number | null = null;
+
+    // Walk up the DOM tree to check for formatting
+    while (node && node !== proseMirror) {
+      if (node instanceof Element) {
+        const tag = node.tagName;
+        if (tag === 'STRONG' || tag === 'B') isBold = true;
+        if (tag === 'EM' || tag === 'I') isItalic = true;
+        if (tag === 'H1') headingLevel = 1;
+        else if (tag === 'H2') headingLevel = 2;
+        else if (tag === 'H3') headingLevel = 3;
+        else if (tag === 'H4') headingLevel = 4;
+        else if (tag === 'H5') headingLevel = 5;
+        else if (tag === 'H6') headingLevel = 6;
+      }
+      node = node.parentNode;
+    }
+
+    activeFormats = { bold: isBold, italic: isItalic, heading: headingLevel };
+    dispatch('formatchange', activeFormats);
+  }
 
   // Focus mode - dim non-active paragraphs
   function applyFocusMode() {
@@ -98,6 +156,7 @@
   }
 
   function handleSelectionChange() {
+    detectActiveFormats();
     if ($settings.focusMode) {
       applyFocusMode();
     }
@@ -106,20 +165,20 @@
     }
   }
 
-  // Formatting commands
-  function toggleBold() {
+  // Formatting commands - called from Toolbar via parent
+  export function toggleBold() {
     if (editorInstance) {
       editorInstance.action(callCommand(toggleStrongCommand.key));
     }
   }
 
-  function toggleItalic() {
+  export function toggleItalic() {
     if (editorInstance) {
       editorInstance.action(callCommand(toggleEmphasisCommand.key));
     }
   }
 
-  function setHeading(level: number) {
+  export function setHeading(level: number) {
     if (editorInstance) {
       editorInstance.action(callCommand(wrapInHeadingCommand.key, level));
     }
@@ -146,6 +205,7 @@
         ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
           updateContent(markdown);
           updateStats(markdown);
+          triggerTypingEffect();
         });
       })
       .use(commonmark)
@@ -203,73 +263,29 @@
 </script>
 
 <div class="editor-wrapper" bind:this={editorWrapper}>
-  {#if $settings.showFormatting}
-    <div class="formatting-bar">
-      <button class="format-btn" on:click={toggleBold} title="Bold (Ctrl+B)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
-          <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
-        </svg>
-      </button>
-      <button class="format-btn" on:click={toggleItalic} title="Italic (Ctrl+I)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="19" y1="4" x2="10" y2="4"/>
-          <line x1="14" y1="20" x2="5" y2="20"/>
-          <line x1="15" y1="4" x2="9" y2="20"/>
-        </svg>
-      </button>
-      <div class="format-divider"></div>
-      <button class="format-btn" on:click={() => setHeading(1)} title="Heading 1">H1</button>
-      <button class="format-btn" on:click={() => setHeading(2)} title="Heading 2">H2</button>
-      <button class="format-btn" on:click={() => setHeading(3)} title="Heading 3">H3</button>
-      <div class="format-divider"></div>
-      <button
-        class="format-btn"
-        class:active={$settings.focusMode}
-        on:click={toggleFocusMode}
-        title="Focus Mode"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="3"/>
-          <circle cx="12" cy="12" r="10"/>
-        </svg>
-      </button>
-      <button
-        class="format-btn"
-        class:active={$settings.typewriterMode}
-        on:click={toggleTypewriterMode}
-        title="Typewriter Mode"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="4" width="20" height="16" rx="2"/>
-          <line x1="6" y1="8" x2="18" y2="8"/>
-          <line x1="6" y1="12" x2="18" y2="12"/>
-          <line x1="6" y1="16" x2="12" y2="16"/>
-        </svg>
-      </button>
-    </div>
-  {/if}
-
   <div class="editor-scroll-area">
     <div
       class="editor-container"
       class:focus-mode={$settings.focusMode}
       class:typewriter-mode={$settings.typewriterMode}
+      class:typing={isTyping}
       bind:this={editorContainer}
       style="--editor-font-family: {fontFamily}; --editor-font-size: {$settings.fontSize}px; --editor-line-height: {$settings.lineHeight};"
     ></div>
   </div>
 
   {#if $settings.showWordCount || $settings.showReadingTime}
-    <div class="stats-bubble">
+    <div class="stats-bubble" class:typing={isTyping}>
       {#if $settings.showWordCount}
         <span>{stats.words} words</span>
+        <span class="stats-dot">·</span>
+        <span>{stats.charactersNoSpaces} letters</span>
       {/if}
       {#if $settings.showWordCount && $settings.showReadingTime && stats.words > 0}
         <span class="stats-dot">·</span>
       {/if}
       {#if $settings.showReadingTime && stats.words > 0}
-        <span>{formatTime(stats.readingTimeSeconds)}</span>
+        <span>{formatTime(stats.speakingTimeSeconds)}</span>
       {/if}
     </div>
   {/if}
@@ -285,48 +301,6 @@
     overflow: hidden;
     background: var(--color-editor-bg);
     position: relative;
-  }
-
-  .formatting-bar {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-bg-secondary);
-    border-bottom: 1px solid var(--color-border-light);
-    flex-shrink: 0;
-  }
-
-  .format-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    height: 32px;
-    padding: 0 var(--space-2);
-    border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    transition: all var(--transition-fast);
-  }
-
-  .format-btn:hover {
-    background: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
-  }
-
-  .format-btn.active {
-    background: var(--color-accent);
-    color: white;
-    box-shadow: var(--glow-accent);
-  }
-
-  .format-divider {
-    width: 1px;
-    height: 20px;
-    background: var(--color-border);
-    margin: 0 var(--space-2);
   }
 
   .editor-scroll-area {
@@ -374,10 +348,20 @@
     box-shadow: var(--shadow-md);
     backdrop-filter: blur(8px);
     z-index: 10;
+    transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
   }
 
   .stats-dot {
     opacity: 0.5;
+  }
+
+  .stats-bubble.typing {
+    transform: scale(1.02);
+  }
+
+  /* Subtle typing pulse on cursor line */
+  .editor-container.typing :global(.milkdown .ProseMirror) {
+    --typing-glow: var(--color-accent-glow);
   }
 
   /* ProseMirror base styles */
@@ -396,6 +380,28 @@
     white-space: pre-wrap;
     word-wrap: break-word;
     caret-color: var(--color-accent);
+  }
+
+  /* Ensure cursor is visible in empty blocks */
+  .editor-container :global(.milkdown .ProseMirror p:empty),
+  .editor-container :global(.milkdown .ProseMirror h1:empty),
+  .editor-container :global(.milkdown .ProseMirror h2:empty),
+  .editor-container :global(.milkdown .ProseMirror h3:empty),
+  .editor-container :global(.milkdown .ProseMirror h4:empty),
+  .editor-container :global(.milkdown .ProseMirror h5:empty),
+  .editor-container :global(.milkdown .ProseMirror h6:empty) {
+    min-height: 1em;
+  }
+
+  .editor-container :global(.milkdown .ProseMirror p:empty::before),
+  .editor-container :global(.milkdown .ProseMirror h1:empty::before),
+  .editor-container :global(.milkdown .ProseMirror h2:empty::before),
+  .editor-container :global(.milkdown .ProseMirror h3:empty::before),
+  .editor-container :global(.milkdown .ProseMirror h4:empty::before),
+  .editor-container :global(.milkdown .ProseMirror h5:empty::before),
+  .editor-container :global(.milkdown .ProseMirror h6:empty::before) {
+    content: '';
+    display: inline-block;
   }
 
   .editor-container :global(.milkdown .ProseMirror:focus) {

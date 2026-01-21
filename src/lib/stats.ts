@@ -4,7 +4,6 @@ export interface TextStats {
   charactersNoSpaces: number;
   sentences: number;
   paragraphs: number;
-  readingTimeSeconds: number;
   speakingTimeSeconds: number;
 }
 
@@ -16,7 +15,6 @@ export function calculateStats(text: string): TextStats {
       charactersNoSpaces: 0,
       sentences: 0,
       paragraphs: 0,
-      readingTimeSeconds: 0,
       speakingTimeSeconds: 0
     };
   }
@@ -34,11 +32,8 @@ export function calculateStats(text: string): TextStats {
   // Paragraph count (non-empty lines separated by blank lines)
   const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim()).length || 1;
 
-  // Reading time in seconds (238 WPM average)
-  const readingTimeSeconds = Math.round((words / 238) * 60);
-
-  // Speaking time in seconds (130 WPM for presentations)
-  const speakingTimeSeconds = Math.round((words / 130) * 60);
+  // Speaking time in seconds (110 WPM)
+  const speakingTimeSeconds = Math.round((words / 110) * 60);
 
   return {
     words,
@@ -46,7 +41,6 @@ export function calculateStats(text: string): TextStats {
     charactersNoSpaces,
     sentences,
     paragraphs,
-    readingTimeSeconds,
     speakingTimeSeconds
   };
 }

@@ -10,12 +10,33 @@
   import './styles/global.css';
 
   let isLoading = true;
+  let editorRef: Editor;
+  let activeFormats = {
+    bold: false,
+    italic: false,
+    heading: null as number | null
+  };
 
   onMount(async () => {
     await loadSettings();
     await initializeDocuments();
     isLoading = false;
   });
+
+  function handleFormat(event: CustomEvent<{ type: string; level?: number }>) {
+    const { type, level } = event.detail;
+    if (type === 'bold') {
+      editorRef?.toggleBold();
+    } else if (type === 'italic') {
+      editorRef?.toggleItalic();
+    } else if (type === 'heading' && level !== undefined) {
+      editorRef?.setHeading(level);
+    }
+  }
+
+  function handleFormatChange(event: CustomEvent<{ bold: boolean; italic: boolean; heading: number | null }>) {
+    activeFormats = event.detail;
+  }
 </script>
 
 <svelte:head>
@@ -31,8 +52,8 @@
   <div class="app">
     <Sidebar />
     <main class="main-content">
-      <Toolbar />
-      <Editor />
+      <Toolbar {activeFormats} on:format={handleFormat} />
+      <Editor bind:this={editorRef} on:formatchange={handleFormatChange} />
     </main>
   </div>
 
