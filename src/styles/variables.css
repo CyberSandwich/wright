@@ -1,0 +1,119 @@
+/* Wright - CSS Custom Properties */
+
+:root {
+  /* Color Palette */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f5f6f6;
+  --color-bg-tertiary: #e8e8e8;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #666666;
+  --color-text-muted: #999999;
+  --color-accent: #007aff;
+  --color-accent-hover: #0056b3;
+  --color-border: #e0e0e0;
+  --color-border-light: #f0f0f0;
+
+  /* Editor-specific tokens */
+  --color-editor-bg: var(--color-bg-primary);
+  --color-editor-text: #424242;
+  --color-selection: rgba(0, 122, 255, 0.2);
+  --color-cursor: var(--color-accent);
+
+  /* Markdown syntax highlighting */
+  --color-heading: #1a1a1a;
+  --color-link: var(--color-accent);
+  --color-code: #e83e8c;
+  --color-code-bg: rgba(0, 0, 0, 0.05);
+  --color-blockquote: #666666;
+  --color-list-marker: var(--color-accent);
+
+  /* Sidebar */
+  --sidebar-width: 280px;
+  --sidebar-bg: var(--color-bg-secondary);
+
+  /* Typography */
+  --font-family-editor: 'iA Writer Quattro', 'JetBrains Mono', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  --font-family-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --font-size-base: clamp(16px, 2vw, 21px);
+  --font-size-sm: 0.875rem;
+  --font-size-xs: 0.75rem;
+  --line-height: 1.6;
+  --line-length: 64ch;
+
+  /* Spacing scale (8px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms ease;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px rgba(0, 122, 255, 0.4);
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --color-bg-primary: #1a1a1a;
+  --color-bg-secondary: #252525;
+  --color-bg-tertiary: #333333;
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #a0a0a0;
+  --color-text-muted: #707070;
+  --color-accent: #4da3ff;
+  --color-accent-hover: #7dbfff;
+  --color-border: #3a3a3a;
+  --color-border-light: #2a2a2a;
+
+  --color-editor-bg: #1e1e1e;
+  --color-editor-text: #d4d4d4;
+  --color-selection: rgba(77, 163, 255, 0.3);
+
+  --color-heading: #ffffff;
+  --color-link: var(--color-accent);
+  --color-code: #f472b6;
+  --color-code-bg: rgba(255, 255, 255, 0.08);
+  --color-blockquote: #a0a0a0;
+
+  --sidebar-bg: var(--color-bg-secondary);
+}
+
+/* High contrast mode support */
+@media (forced-colors: active) {
+  :root {
+    --color-bg-primary: Canvas;
+    --color-bg-secondary: Canvas;
+    --color-text-primary: CanvasText;
+    --color-text-secondary: CanvasText;
+    --color-accent: LinkText;
+    --color-border: ButtonText;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
