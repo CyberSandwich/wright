@@ -25,8 +25,8 @@
     isLoading = false;
   });
 
-  function handleFormat(event: CustomEvent<{ type: string; level?: number }>) {
-    const { type, level } = event.detail;
+  function handleFormat(event: CustomEvent<{ type: string; level?: number; color?: string }>) {
+    const { type, level, color } = event.detail;
     if (type === 'bold') {
       editorRef?.toggleBold();
     } else if (type === 'italic') {
@@ -39,6 +39,8 @@
       editorRef?.setHeading(level);
     } else if (type === 'link') {
       editorRef?.openLinkPopup();
+    } else if (type === 'textColor' && color !== undefined) {
+      editorRef?.setTextColor(color);
     }
   }
 

@@ -138,12 +138,6 @@
 
   function setTextColor(color: string) {
     showTextColorMenu = false;
-    if (color === '') {
-      // Remove color by setting to inherit
-      document.execCommand('removeFormat', false);
-    } else {
-      document.execCommand('foreColor', false, color);
-    }
     dispatch('format', { type: 'textColor', color });
   }
 
@@ -182,6 +176,10 @@
     updateSetting('fontSize', newSize);
   }
 
+  function resetFontSize() {
+    updateSetting('fontSize', 18);
+  }
+
   $: fontLabel = $settings.fontFamily === 'mono' ? 'Mono' :
                  $settings.fontFamily === 'serif' ? 'Serif' : 'Sans';
 
@@ -210,10 +208,10 @@
         </svg>
       {/if}
     </button>
-
   </div>
 
   <div class="toolbar-center">
+    <!-- Format buttons -->
     <div class="format-group">
       <button
         class="format-btn"
@@ -311,6 +309,7 @@
 
     <div class="divider"></div>
 
+    <!-- Heading dropdown -->
     <div class="dropdown-container">
       <button
         class="dropdown-btn heading-btn"
@@ -332,8 +331,7 @@
       {/if}
     </div>
 
-    <div class="divider"></div>
-
+    <!-- Font dropdown -->
     <div class="dropdown-container">
       <button
         class="dropdown-btn font-btn"
@@ -354,14 +352,31 @@
       {/if}
     </div>
 
+    <div class="divider"></div>
+
+    <!-- Font size control: - ○ + -->
     <div class="size-control">
-      <button class="size-btn" on:click={() => adjustFontSize(-1)} title="Decrease font size">−</button>
-      <span class="size-value">{$settings.fontSize}</span>
-      <button class="size-btn" on:click={() => adjustFontSize(1)} title="Increase font size">+</button>
+      <button class="size-btn" on:click={() => adjustFontSize(-1)} title="Smaller">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+      <button class="size-reset" on:click={resetFontSize} title="Reset to default (18px)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="8"/>
+        </svg>
+      </button>
+      <button class="size-btn" on:click={() => adjustFontSize(1)} title="Larger">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
     </div>
 
     <div class="divider"></div>
 
+    <!-- Mode buttons -->
     <button
       class="mode-btn"
       class:active={$settings.focusMode}
@@ -381,6 +396,7 @@
   </div>
 
   <div class="toolbar-right">
+    <!-- Export dropdown -->
     <div class="dropdown-container">
       <button
         class="export-btn"
@@ -388,7 +404,12 @@
         title="Export document"
         aria-expanded={showExportMenu}
       >
-        Export
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>Export</span>
       </button>
 
       {#if showExportMenu}
@@ -399,6 +420,7 @@
       {/if}
     </div>
 
+    <!-- Settings -->
     <button
       class="icon-btn"
       on:click={handleSettings}
@@ -418,12 +440,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
     background: var(--color-bg-secondary);
     border-bottom: 1px solid var(--color-border-light);
-    height: 52px;
+    min-height: 56px;
     flex-shrink: 0;
-    gap: var(--space-3);
+    gap: var(--space-4);
   }
 
   .toolbar-left,
@@ -431,23 +453,25 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    flex-shrink: 0;
   }
 
   .toolbar-center {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-3);
     flex: 1;
     justify-content: center;
+    flex-wrap: wrap;
   }
 
   .icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-md);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
     color: var(--color-text-secondary);
     transition: all var(--transition-fast);
     flex-shrink: 0;
@@ -463,17 +487,17 @@
     align-items: center;
     gap: 2px;
     background: var(--color-bg-tertiary);
-    border-radius: var(--radius-md);
-    padding: 2px;
+    border-radius: var(--radius-lg);
+    padding: 4px;
   }
 
   .format-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-sm);
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-md);
     color: var(--color-text-secondary);
     transition: all var(--transition-fast);
   }
@@ -490,9 +514,8 @@
 
   .divider {
     width: 1px;
-    height: 24px;
+    height: 28px;
     background: var(--color-border);
-    margin: 0 var(--space-1);
   }
 
   .dropdown-container {
@@ -503,15 +526,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-1);
-    height: 36px;
-    padding: 0 var(--space-3);
+    gap: var(--space-2);
+    height: 40px;
+    padding: 0 var(--space-4);
     background: var(--color-bg-tertiary);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     color: var(--color-text-primary);
     font-size: var(--font-size-sm);
     font-weight: 500;
-    line-height: 1;
     transition: all var(--transition-fast);
   }
 
@@ -519,13 +541,12 @@
     background: var(--color-border);
   }
 
-  /* Fixed width for heading and font buttons to prevent shifting */
   .dropdown-btn.heading-btn {
-    min-width: 100px;
+    min-width: 110px;
   }
 
   .dropdown-btn.font-btn {
-    min-width: 70px;
+    min-width: 80px;
   }
 
   .dropdown-btn .btn-label {
@@ -535,17 +556,17 @@
 
   .dropdown-menu {
     position: absolute;
-    top: calc(100% + 4px);
+    top: calc(100% + 6px);
     left: 50%;
     transform: translateX(-50%);
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
-    padding: var(--space-1);
+    padding: var(--space-2);
     z-index: 100;
-    min-width: 120px;
-    animation: menuPop var(--transition-fast) ease-out;
+    min-width: 140px;
+    animation: menuPop 0.15s ease-out;
   }
 
   .dropdown-menu.right {
@@ -557,7 +578,7 @@
   @keyframes menuPop {
     from {
       opacity: 0;
-      transform: translateX(-50%) translateY(-4px);
+      transform: translateX(-50%) translateY(-6px);
     }
     to {
       opacity: 1;
@@ -566,13 +587,13 @@
   }
 
   .dropdown-menu.right {
-    animation: menuPopRight var(--transition-fast) ease-out;
+    animation: menuPopRight 0.15s ease-out;
   }
 
   @keyframes menuPopRight {
     from {
       opacity: 0;
-      transform: translateY(-4px);
+      transform: translateY(-6px);
     }
     to {
       opacity: 1;
@@ -583,10 +604,10 @@
   .dropdown-item {
     display: block;
     width: 100%;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
     font-size: var(--font-size-sm);
     color: var(--color-text-primary);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     text-align: left;
     transition: background var(--transition-fast);
   }
@@ -600,24 +621,24 @@
     color: white;
   }
 
+  /* Font size control: - ○ + */
   .size-control {
     display: flex;
     align-items: center;
-    height: 36px;
+    gap: 2px;
     background: var(--color-bg-tertiary);
-    border-radius: var(--radius-md);
-    overflow: hidden;
+    border-radius: var(--radius-lg);
+    padding: 4px;
   }
 
   .size-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 100%;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-md);
     color: var(--color-text-secondary);
-    font-size: 1rem;
-    font-weight: 500;
     transition: all var(--transition-fast);
   }
 
@@ -626,26 +647,32 @@
     color: var(--color-text-primary);
   }
 
-  .size-value {
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    color: var(--color-text-primary);
-    min-width: 28px;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
+  .size-reset {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    transition: all var(--transition-fast);
+  }
+
+  .size-reset:hover {
+    background: var(--color-bg-secondary);
+    color: var(--color-accent);
   }
 
   .mode-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 36px;
-    padding: 0 var(--space-3);
-    border-radius: var(--radius-md);
+    height: 40px;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-lg);
     color: var(--color-text-secondary);
     font-size: var(--font-size-sm);
     font-weight: 500;
-    line-height: 1;
     transition: all var(--transition-fast);
   }
 
@@ -660,14 +687,18 @@
   }
 
   .export-btn {
-    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 40px;
     padding: 0 var(--space-4);
     background: var(--color-accent);
     color: white;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     font-size: var(--font-size-sm);
     font-weight: 500;
     transition: all var(--transition-fast);
+    white-space: nowrap;
   }
 
   .export-btn:hover {
@@ -682,7 +713,7 @@
 
   .color-dropdown-menu {
     position: absolute;
-    top: calc(100% + 4px);
+    top: calc(100% + 6px);
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -690,30 +721,30 @@
     padding: var(--space-2);
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
     z-index: 100;
-    animation: menuPop var(--transition-fast) ease-out;
+    animation: menuPop 0.15s ease-out;
   }
 
   .color-option-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
   }
 
   .color-option-btn:hover {
     background: var(--color-bg-tertiary);
-    transform: scale(1.1);
+    transform: scale(1.15);
   }
 
   .color-swatch-text {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: var(--radius-full);
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
   }
@@ -725,44 +756,43 @@
     color: var(--color-text-muted);
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 1000px) {
     .mode-btn {
       display: none;
     }
   }
 
-  @media (max-width: 700px) {
+  @media (max-width: 800px) {
     .toolbar-center {
-      gap: var(--space-1);
+      gap: var(--space-2);
     }
     .divider {
       display: none;
     }
     .dropdown-btn {
-      padding: 0 var(--space-2);
-    }
-    .size-control {
-      display: none;
+      padding: 0 var(--space-3);
     }
   }
 
-  @media (max-width: 500px) {
+  @media (max-width: 640px) {
     .toolbar {
-      padding: var(--space-2);
+      padding: var(--space-2) var(--space-3);
     }
     .toolbar-center {
       display: none;
     }
+    .export-btn span {
+      display: none;
+    }
     .export-btn {
       padding: 0 var(--space-3);
-      font-size: var(--font-size-xs);
     }
   }
 
   /* Safe area support for mobile */
   @supports (padding-top: env(safe-area-inset-top)) {
     .toolbar {
-      padding-top: max(var(--space-2), env(safe-area-inset-top));
+      padding-top: max(var(--space-3), env(safe-area-inset-top));
       padding-left: max(var(--space-4), env(safe-area-inset-left));
       padding-right: max(var(--space-4), env(safe-area-inset-right));
     }

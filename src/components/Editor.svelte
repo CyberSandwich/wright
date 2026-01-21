@@ -264,15 +264,44 @@
   }
 
   export function toggleUnderline() {
-    if (!editorInstance) return;
-    // Use execCommand for underline since it's not in standard Markdown
-    document.execCommand('underline', false);
+    if (!editorInstance || !editorContainer) return;
+    // Ensure editor is focused before using execCommand
+    const proseMirror = editorContainer.querySelector('.ProseMirror') as HTMLElement;
+    if (proseMirror) {
+      proseMirror.focus();
+      // Small delay to ensure focus is set
+      requestAnimationFrame(() => {
+        document.execCommand('underline', false);
+      });
+    }
   }
 
   export function toggleStrikethrough() {
-    if (!editorInstance) return;
-    // Use execCommand for strikethrough
-    document.execCommand('strikethrough', false);
+    if (!editorInstance || !editorContainer) return;
+    // Ensure editor is focused before using execCommand
+    const proseMirror = editorContainer.querySelector('.ProseMirror') as HTMLElement;
+    if (proseMirror) {
+      proseMirror.focus();
+      requestAnimationFrame(() => {
+        document.execCommand('strikethrough', false);
+      });
+    }
+  }
+
+  // Text color
+  export function setTextColor(color: string) {
+    if (!editorInstance || !editorContainer) return;
+    const proseMirror = editorContainer.querySelector('.ProseMirror') as HTMLElement;
+    if (proseMirror) {
+      proseMirror.focus();
+      requestAnimationFrame(() => {
+        if (color === '') {
+          document.execCommand('removeFormat', false);
+        } else {
+          document.execCommand('foreColor', false, color);
+        }
+      });
+    }
   }
 
   // Link functions
@@ -479,7 +508,11 @@
       class:typewriter-mode={$settings.typewriterMode}
       class:typing={isTyping}
       bind:this={editorContainer}
+      on:click={() => $settings.focusMode && requestAnimationFrame(() => applyFocusMode())}
+      on:keyup={() => $settings.focusMode && requestAnimationFrame(() => applyFocusMode())}
       style="--editor-font-family: {fontFamily}; --editor-font-size: {$settings.fontSize}px; --editor-line-height: {$settings.lineHeight};"
+      role="textbox"
+      tabindex="0"
     ></div>
   </div>
 
@@ -802,23 +835,25 @@
   .editor-container.focus-mode :global(.milkdown h6),
   .editor-container.focus-mode :global(.milkdown li),
   .editor-container.focus-mode :global(.milkdown blockquote),
-  .editor-container.focus-mode :global(.milkdown pre) {
-    opacity: 0.25;
-    transition: opacity 0.15s ease;
+  .editor-container.focus-mode :global(.milkdown pre),
+  .editor-container.focus-mode :global(p),
+  .editor-container.focus-mode :global(h1),
+  .editor-container.focus-mode :global(h2),
+  .editor-container.focus-mode :global(h3),
+  .editor-container.focus-mode :global(h4),
+  .editor-container.focus-mode :global(h5),
+  .editor-container.focus-mode :global(h6),
+  .editor-container.focus-mode :global(li),
+  .editor-container.focus-mode :global(blockquote),
+  .editor-container.focus-mode :global(pre) {
+    opacity: 0.25 !important;
+    transition: opacity 0.2s ease;
   }
 
-  /* Active block in focus mode - more specific to override */
-  .editor-container.focus-mode :global(.milkdown p.focus-active),
-  .editor-container.focus-mode :global(.milkdown h1.focus-active),
-  .editor-container.focus-mode :global(.milkdown h2.focus-active),
-  .editor-container.focus-mode :global(.milkdown h3.focus-active),
-  .editor-container.focus-mode :global(.milkdown h4.focus-active),
-  .editor-container.focus-mode :global(.milkdown h5.focus-active),
-  .editor-container.focus-mode :global(.milkdown h6.focus-active),
-  .editor-container.focus-mode :global(.milkdown li.focus-active),
-  .editor-container.focus-mode :global(.milkdown blockquote.focus-active),
-  .editor-container.focus-mode :global(.milkdown pre.focus-active) {
-    opacity: 1;
+  /* Active block in focus mode */
+  .editor-container.focus-mode :global(.focus-active),
+  .editor-container.focus-mode :global(.milkdown .focus-active) {
+    opacity: 1 !important;
   }
 
   /* Link popup */
