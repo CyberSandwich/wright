@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, tick, createEventDispatcher } from 'svelte';
   import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from '@milkdown/core';
-  import { commonmark, toggleStrongCommand, toggleEmphasisCommand, wrapInHeadingCommand } from '@milkdown/preset-commonmark';
+  import { commonmark, toggleStrongCommand, toggleEmphasisCommand, wrapInHeadingCommand, toggleLinkCommand, updateLinkCommand } from '@milkdown/preset-commonmark';
   import { history } from '@milkdown/plugin-history';
   import { listener, listenerCtx } from '@milkdown/plugin-listener';
   import { callCommand } from '@milkdown/utils';
@@ -37,6 +37,13 @@
     strikethrough: false,
     heading: null as number | null
   };
+
+  // Link popup state
+  let showLinkPopup = false;
+  let linkUrl = '';
+  let linkPopupPosition = { x: 0, y: 0 };
+  let existingLinkHref: string | null = null;
+  let linkInputEl: HTMLInputElement;
 
   const updateStats = debounce((content: string) => {
     stats = calculateStats(content);
@@ -104,8 +111,6 @@
   }
 
   // Focus mode - dim non-active paragraphs
-  let lastActiveBlock: Element | null = null;
-
   function applyFocusMode() {
     if (!editorContainer || !$settings.focusMode) return;
 
@@ -113,33 +118,30 @@
     if (!proseMirror) return;
 
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    const range = selection.getRangeAt(0);
     let activeBlock: Element | null = null;
 
-    // Find the active paragraph/block - start from the actual node
-    let node: Node | null = range.startContainer;
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
 
-    // If we're in a text node, start with parent
-    if (node.nodeType === Node.TEXT_NODE) {
-      node = node.parentNode;
-    }
+      // Find the active paragraph/block - start from the actual node
+      let node: Node | null = range.startContainer;
 
-    while (node && node !== proseMirror) {
-      if (node instanceof Element) {
-        const tag = node.tagName.toUpperCase();
-        if (['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE', 'PRE'].includes(tag)) {
-          activeBlock = node;
-          break;
-        }
+      // If we're in a text node, start with parent
+      if (node.nodeType === Node.TEXT_NODE) {
+        node = node.parentNode;
       }
-      node = node.parentNode;
-    }
 
-    // Only update if active block changed
-    if (activeBlock === lastActiveBlock) return;
-    lastActiveBlock = activeBlock;
+      while (node && node !== proseMirror) {
+        if (node instanceof Element) {
+          const tag = node.tagName.toUpperCase();
+          if (['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE', 'PRE'].includes(tag)) {
+            activeBlock = node;
+            break;
+          }
+        }
+        node = node.parentNode;
+      }
+    }
 
     // Remove active class from all blocks, add to active one
     const blocks = proseMirror.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre');
@@ -154,20 +156,20 @@
 
   function clearFocusMode() {
     if (!editorContainer) return;
-    lastActiveBlock = null;
     const blocks = editorContainer.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre');
     blocks.forEach((block) => {
       block.classList.remove('focus-active');
     });
   }
 
-  // Typewriter mode - keep cursor vertically centered
+  // Typewriter mode - keep cursor vertically centered (only on typing)
   let scrollArea: HTMLElement | null = null;
-  let typewriterScrollTimeout: ReturnType<typeof setTimeout> | null = null;
-  let isScrolling = false;
+  let typewriterAnimationFrame: number | null = null;
+  let currentScrollTarget = 0;
+  let isTypewriterAnimating = false;
 
   function applyTypewriterMode() {
-    if (!$settings.typewriterMode || isScrolling) return;
+    if (!$settings.typewriterMode) return;
 
     // Get the scroll area element
     if (!scrollArea) {
@@ -175,45 +177,63 @@
     }
     if (!scrollArea) return;
 
-    // Debounce to prevent jittering
-    if (typewriterScrollTimeout) {
-      clearTimeout(typewriterScrollTimeout);
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+
+    // Only proceed if cursor is collapsed (not selecting text)
+    if (!range.collapsed) return;
+
+    const rects = range.getClientRects();
+    const rect = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
+    if (!rect || rect.height === 0) return;
+
+    const scrollAreaRect = scrollArea.getBoundingClientRect();
+
+    // Calculate target position (center of scroll area)
+    const targetY = scrollAreaRect.height / 2;
+    const cursorRelativeY = rect.top - scrollAreaRect.top;
+    const diff = cursorRelativeY - targetY;
+
+    // Only scroll if cursor is noticeably off-center
+    if (Math.abs(diff) > 40) {
+      currentScrollTarget = scrollArea.scrollTop + diff;
+
+      if (!isTypewriterAnimating) {
+        animateTypewriterScroll();
+      }
+    }
+  }
+
+  function animateTypewriterScroll() {
+    if (!scrollArea) return;
+
+    const currentScroll = scrollArea.scrollTop;
+    const diff = currentScrollTarget - currentScroll;
+
+    // If we're close enough, stop animating
+    if (Math.abs(diff) < 1) {
+      isTypewriterAnimating = false;
+      return;
     }
 
-    typewriterScrollTimeout = setTimeout(() => {
-      if (!scrollArea) return;
+    isTypewriterAnimating = true;
 
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return;
+    // Smooth easing - move 12% of remaining distance each frame
+    // This creates a buttery smooth deceleration effect
+    const step = diff * 0.12;
+    scrollArea.scrollTop = currentScroll + step;
 
-      const range = selection.getRangeAt(0);
-      const rects = range.getClientRects();
+    typewriterAnimationFrame = requestAnimationFrame(animateTypewriterScroll);
+  }
 
-      // Use the first rect if available, otherwise fall back to range rect
-      const rect = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
-      if (!rect || rect.height === 0) return;
-
-      const scrollAreaRect = scrollArea.getBoundingClientRect();
-
-      // Calculate target position (center of scroll area)
-      const targetY = scrollAreaRect.height / 2;
-      const cursorRelativeY = rect.top - scrollAreaRect.top;
-      const diff = cursorRelativeY - targetY;
-
-      // Only scroll if cursor is significantly off-center
-      if (Math.abs(diff) > 30) {
-        isScrolling = true;
-        scrollArea.scrollBy({
-          top: diff,
-          behavior: 'smooth'
-        });
-
-        // Reset scrolling flag after animation
-        setTimeout(() => {
-          isScrolling = false;
-        }, 200);
-      }
-    }, 50);
+  function cancelTypewriterAnimation() {
+    if (typewriterAnimationFrame) {
+      cancelAnimationFrame(typewriterAnimationFrame);
+      typewriterAnimationFrame = null;
+    }
+    isTypewriterAnimating = false;
   }
 
   function handleSelectionChange() {
@@ -221,9 +241,7 @@
     if ($settings.focusMode) {
       applyFocusMode();
     }
-    if ($settings.typewriterMode) {
-      applyTypewriterMode();
-    }
+    // Note: Typewriter mode is NOT triggered here - only on typing
   }
 
   // Formatting commands - called from Toolbar via parent
@@ -255,6 +273,104 @@
     if (!editorInstance) return;
     // Use execCommand for strikethrough
     document.execCommand('strikethrough', false);
+  }
+
+  // Link functions
+  function detectExistingLink(): string | null {
+    if (!editorContainer) return null;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+
+    const range = selection.getRangeAt(0);
+    let node: Node | null = range.startContainer;
+
+    while (node && node !== editorContainer) {
+      if (node instanceof Element && node.tagName === 'A') {
+        return (node as HTMLAnchorElement).href;
+      }
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  export function openLinkPopup() {
+    if (!editorContainer) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const containerRect = editorContainer.getBoundingClientRect();
+
+    // Position popup near selection
+    linkPopupPosition = {
+      x: rect.left - containerRect.left + rect.width / 2,
+      y: rect.bottom - containerRect.top + 8
+    };
+
+    existingLinkHref = detectExistingLink();
+    linkUrl = existingLinkHref || '';
+    showLinkPopup = true;
+
+    // Focus input after popup is shown
+    tick().then(() => {
+      linkInputEl?.focus();
+      linkInputEl?.select();
+    });
+  }
+
+  function applyLink() {
+    if (!editorInstance) return;
+
+    if (linkUrl.trim()) {
+      // Add https:// if no protocol specified
+      let url = linkUrl.trim();
+      if (!/^https?:\/\//i.test(url) && !url.startsWith('mailto:')) {
+        url = 'https://' + url;
+      }
+
+      if (existingLinkHref) {
+        // Update existing link
+        editorInstance.action(callCommand(updateLinkCommand.key, { href: url }));
+      } else {
+        // Add new link
+        editorInstance.action(callCommand(toggleLinkCommand.key, { href: url }));
+      }
+    } else if (existingLinkHref) {
+      // Remove link if URL is empty and there was an existing link
+      editorInstance.action(callCommand(toggleLinkCommand.key, {}));
+    }
+
+    closeLinkPopup();
+  }
+
+  function closeLinkPopup() {
+    showLinkPopup = false;
+    linkUrl = '';
+    existingLinkHref = null;
+
+    // Return focus to editor
+    const proseMirror = editorContainer?.querySelector('.ProseMirror') as HTMLElement;
+    proseMirror?.focus();
+  }
+
+  function handleLinkKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyLink();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closeLinkPopup();
+    }
+  }
+
+  // Handle Cmd+K shortcut
+  function handleKeydown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      openLinkPopup();
+    }
   }
 
   async function initEditor(content: string) {
@@ -316,6 +432,7 @@
 
   onDestroy(() => {
     document.removeEventListener('selectionchange', handleSelectionChange);
+    cancelTypewriterAnimation();
     if (editorInstance) {
       try {
         editorInstance.destroy();
@@ -331,8 +448,13 @@
   }
 
   // React to focus mode changes
-  $: if (isInitialized && !$settings.focusMode) {
-    clearFocusMode();
+  $: if (isInitialized) {
+    if ($settings.focusMode) {
+      // Apply focus mode immediately when enabled
+      requestAnimationFrame(() => applyFocusMode());
+    } else {
+      clearFocusMode();
+    }
   }
 
   // React to syntax highlight changes
@@ -346,6 +468,8 @@
       ? 'Georgia, "Times New Roman", serif'
       : 'var(--font-family-ui)';
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div class="editor-wrapper" bind:this={editorWrapper}>
   <div class="editor-scroll-area">
@@ -376,6 +500,36 @@
       {#if $settings.showReadingTime && stats.words > 0}
         <span>{formatTime(stats.speakingTimeSeconds)}</span>
       {/if}
+    </div>
+  {/if}
+
+  {#if showLinkPopup}
+    <div
+      class="link-popup"
+      style="left: {linkPopupPosition.x}px; top: {linkPopupPosition.y}px;"
+    >
+      <div class="link-popup-arrow"></div>
+      <input
+        bind:this={linkInputEl}
+        type="url"
+        placeholder="Enter URL..."
+        bind:value={linkUrl}
+        on:keydown={handleLinkKeydown}
+        class="link-input"
+      />
+      <div class="link-popup-actions">
+        <button class="link-btn link-btn-apply" on:click={applyLink}>
+          {existingLinkHref ? 'Update' : 'Add'}
+        </button>
+        {#if existingLinkHref}
+          <button class="link-btn link-btn-remove" on:click={() => { linkUrl = ''; applyLink(); }}>
+            Remove
+          </button>
+        {/if}
+        <button class="link-btn link-btn-cancel" on:click={closeLinkPopup}>
+          Cancel
+        </button>
+      </div>
     </div>
   {/if}
 </div>
@@ -653,7 +807,119 @@
     transition: opacity 0.15s ease;
   }
 
-  .editor-container.focus-mode :global(.milkdown .focus-active) {
+  /* Active block in focus mode - more specific to override */
+  .editor-container.focus-mode :global(.milkdown p.focus-active),
+  .editor-container.focus-mode :global(.milkdown h1.focus-active),
+  .editor-container.focus-mode :global(.milkdown h2.focus-active),
+  .editor-container.focus-mode :global(.milkdown h3.focus-active),
+  .editor-container.focus-mode :global(.milkdown h4.focus-active),
+  .editor-container.focus-mode :global(.milkdown h5.focus-active),
+  .editor-container.focus-mode :global(.milkdown h6.focus-active),
+  .editor-container.focus-mode :global(.milkdown li.focus-active),
+  .editor-container.focus-mode :global(.milkdown blockquote.focus-active),
+  .editor-container.focus-mode :global(.milkdown pre.focus-active) {
     opacity: 1;
+  }
+
+  /* Link popup */
+  .link-popup {
+    position: absolute;
+    transform: translateX(-50%);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-3);
+    z-index: 100;
+    min-width: 280px;
+    animation: popIn 0.15s ease-out;
+  }
+
+  @keyframes popIn {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-4px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+  }
+
+  .link-popup-arrow {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 12px;
+    background: var(--color-bg-secondary);
+    border-left: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-border);
+    transform: translateX(-50%) rotate(45deg);
+  }
+
+  .link-input {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    outline: none;
+    transition: all var(--transition-fast);
+  }
+
+  .link-input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent-glow);
+  }
+
+  .link-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .link-popup-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
+  .link-btn {
+    flex: 1;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    transition: all var(--transition-fast);
+  }
+
+  .link-btn-apply {
+    background: var(--color-accent);
+    color: white;
+  }
+
+  .link-btn-apply:hover {
+    background: var(--color-accent-hover);
+  }
+
+  .link-btn-remove {
+    background: var(--color-bg-tertiary);
+    color: #EF4444;
+  }
+
+  .link-btn-remove:hover {
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .link-btn-cancel {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+  }
+
+  .link-btn-cancel:hover {
+    background: var(--color-border);
+    color: var(--color-text-primary);
   }
 </style>

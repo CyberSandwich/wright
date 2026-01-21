@@ -37,6 +37,8 @@
       editorRef?.toggleStrikethrough();
     } else if (type === 'heading' && level !== undefined) {
       editorRef?.setHeading(level);
+    } else if (type === 'link') {
+      editorRef?.openLinkPopup();
     }
   }
 

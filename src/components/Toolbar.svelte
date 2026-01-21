@@ -1,6 +1,6 @@
 <script lang="ts">
   import { currentDocument, saveNow } from '../stores/documents';
-  import { settings, toggleSidebar, updateSetting, toggleFocusMode, toggleTypewriterMode, type FontFamily, type AccentColor } from '../stores/settings';
+  import { settings, toggleSidebar, updateSetting, toggleFocusMode, toggleTypewriterMode, type FontFamily } from '../stores/settings';
   import { openModal } from '../stores/ui';
   import { fileSave } from 'browser-fs-access';
   import { createEventDispatcher } from 'svelte';
@@ -10,16 +10,17 @@
   let showExportMenu = false;
   let showFontMenu = false;
   let showHeadingMenu = false;
-  let showColorMenu = false;
+  let showTextColorMenu = false;
 
-  const accentColors: { id: AccentColor; color: string }[] = [
-    { id: 'blue', color: '#58a6ff' },
-    { id: 'purple', color: '#a78bfa' },
-    { id: 'pink', color: '#f472b6' },
-    { id: 'red', color: '#f87171' },
-    { id: 'orange', color: '#fb923c' },
-    { id: 'green', color: '#4ade80' },
-    { id: 'teal', color: '#2dd4bf' }
+  const textColors = [
+    { name: 'Default', value: '' },
+    { name: 'Red', value: '#EF4444' },
+    { name: 'Orange', value: '#F97316' },
+    { name: 'Yellow', value: '#EAB308' },
+    { name: 'Green', value: '#22C55E' },
+    { name: 'Blue', value: '#3B82F6' },
+    { name: 'Purple', value: '#8B5CF6' },
+    { name: 'Pink', value: '#EC4899' }
   ];
 
   // Active format states (updated by Editor)
@@ -132,12 +133,18 @@
     showExportMenu = false;
     showFontMenu = false;
     showHeadingMenu = false;
-    showColorMenu = false;
+    showTextColorMenu = false;
   }
 
-  function setAccentColor(color: AccentColor) {
-    updateSetting('accentColor', color);
-    showColorMenu = false;
+  function setTextColor(color: string) {
+    showTextColorMenu = false;
+    if (color === '') {
+      // Remove color by setting to inherit
+      document.execCommand('removeFormat', false);
+    } else {
+      document.execCommand('foreColor', false, color);
+    }
+    dispatch('format', { type: 'textColor', color });
   }
 
   function toggleBold() {
@@ -154,6 +161,10 @@
 
   function toggleStrikethrough() {
     dispatch('format', { type: 'strikethrough' });
+  }
+
+  function toggleLink() {
+    dispatch('format', { type: 'link' });
   }
 
   function setHeading(level: number) {
@@ -200,31 +211,6 @@
       {/if}
     </button>
 
-    <div class="dropdown-container">
-      <button
-        class="color-picker-btn"
-        on:click|stopPropagation={() => showColorMenu = !showColorMenu}
-        title="Accent color"
-        aria-label="Change accent color"
-      >
-        <span class="color-dot" style="background: var(--color-accent)"></span>
-      </button>
-      {#if showColorMenu}
-        <div class="color-menu">
-          {#each accentColors as { id, color }}
-            <button
-              class="color-option"
-              class:active={$settings.accentColor === id}
-              style="--option-color: {color}"
-              on:click={() => setAccentColor(id)}
-              aria-label="{id} color"
-            >
-              <span class="color-swatch"></span>
-            </button>
-          {/each}
-        </div>
-      {/if}
-    </div>
   </div>
 
   <div class="toolbar-center">
@@ -232,7 +218,7 @@
       <button
         class="format-btn"
         class:active={activeFormats.bold}
-        on:click={toggleBold}
+        on:mousedown|preventDefault={toggleBold}
         title="Bold (Cmd+B)"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -243,7 +229,7 @@
       <button
         class="format-btn"
         class:active={activeFormats.italic}
-        on:click={toggleItalic}
+        on:mousedown|preventDefault={toggleItalic}
         title="Italic (Cmd+I)"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -255,7 +241,7 @@
       <button
         class="format-btn"
         class:active={activeFormats.underline}
-        on:click={toggleUnderline}
+        on:mousedown|preventDefault={toggleUnderline}
         title="Underline (Cmd+U)"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -266,7 +252,7 @@
       <button
         class="format-btn"
         class:active={activeFormats.strikethrough}
-        on:click={toggleStrikethrough}
+        on:mousedown|preventDefault={toggleStrikethrough}
         title="Strikethrough"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -275,17 +261,63 @@
           <path d="M8.5 16.5c1 1 2.5 2.5 5.5 2.5 4 0 6-2 6-4"/>
         </svg>
       </button>
+      <button
+        class="format-btn"
+        on:mousedown|preventDefault={toggleLink}
+        title="Add Link (Cmd+K)"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+        </svg>
+      </button>
+      <div class="color-dropdown">
+        <button
+          class="format-btn"
+          on:click|stopPropagation={() => showTextColorMenu = !showTextColorMenu}
+          title="Text Color"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 20h16"/>
+            <path d="M9.5 4L6 16"/>
+            <path d="M14.5 4L18 16"/>
+            <path d="M7.5 12h9"/>
+          </svg>
+        </button>
+        {#if showTextColorMenu}
+          <div class="color-dropdown-menu">
+            {#each textColors as { name, value }}
+              <button
+                class="color-option-btn"
+                on:mousedown|preventDefault={() => setTextColor(value)}
+                title={name}
+              >
+                {#if value === ''}
+                  <span class="color-swatch-none">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="4" y1="4" x2="20" y2="20"/>
+                    </svg>
+                  </span>
+                {:else}
+                  <span class="color-swatch-text" style="background: {value}"></span>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
 
     <div class="divider"></div>
 
     <div class="dropdown-container">
       <button
-        class="dropdown-btn"
+        class="dropdown-btn heading-btn"
         on:click|stopPropagation={() => showHeadingMenu = !showHeadingMenu}
         title="Text style"
       >
-        {headingLabel}
+        <span class="btn-label">{headingLabel}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M6 9l6 6 6-6"/>
         </svg>
@@ -304,11 +336,11 @@
 
     <div class="dropdown-container">
       <button
-        class="dropdown-btn"
+        class="dropdown-btn font-btn"
         on:click|stopPropagation={() => showFontMenu = !showFontMenu}
         title="Font family"
       >
-        {fontLabel}
+        <span class="btn-label">{fontLabel}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M6 9l6 6 6-6"/>
         </svg>
@@ -487,6 +519,20 @@
     background: var(--color-border);
   }
 
+  /* Fixed width for heading and font buttons to prevent shifting */
+  .dropdown-btn.heading-btn {
+    min-width: 100px;
+  }
+
+  .dropdown-btn.font-btn {
+    min-width: 70px;
+  }
+
+  .dropdown-btn .btn-label {
+    flex: 1;
+    text-align: left;
+  }
+
   .dropdown-menu {
     position: absolute;
     top: calc(100% + 4px);
@@ -629,34 +675,18 @@
     box-shadow: var(--glow-accent);
   }
 
-  /* Color picker */
-  .color-picker-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
+  /* Text color dropdown */
+  .color-dropdown {
+    position: relative;
   }
 
-  .color-picker-btn:hover {
-    background: var(--color-bg-tertiary);
-  }
-
-  .color-dot {
-    width: 20px;
-    height: 20px;
-    border-radius: var(--radius-full);
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2), var(--shadow-sm);
-  }
-
-  .color-menu {
+  .color-dropdown-menu {
     position: absolute;
     top: calc(100% + 4px);
-    left: 0;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
-    gap: var(--space-2);
+    gap: var(--space-1);
     padding: var(--space-2);
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
@@ -666,34 +696,33 @@
     animation: menuPop var(--transition-fast) ease-out;
   }
 
-  .color-option {
+  .color-option-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
   }
 
-  .color-option:hover {
+  .color-option-btn:hover {
+    background: var(--color-bg-tertiary);
     transform: scale(1.1);
   }
 
-  .color-option.active {
-    background: var(--color-bg-tertiary);
-  }
-
-  .color-swatch {
-    width: 20px;
-    height: 20px;
+  .color-swatch-text {
+    width: 18px;
+    height: 18px;
     border-radius: var(--radius-full);
-    background: var(--option-color);
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1), var(--shadow-sm);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
   }
 
-  .color-option.active .color-swatch {
-    box-shadow: 0 0 0 2px var(--color-bg-secondary), 0 0 0 4px var(--option-color);
+  .color-swatch-none {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
   }
 
   @media (max-width: 900px) {

@@ -1,5 +1,15 @@
 <script lang="ts">
-  import { settings, updateSetting, type Theme, type FontFamily, type SyntaxHighlightType } from '../stores/settings';
+  import { settings, updateSetting, type Theme, type FontFamily, type SyntaxHighlightType, type AccentColor } from '../stores/settings';
+
+  const accentColors: { value: AccentColor; color: string }[] = [
+    { value: 'blue', color: '#3B82F6' },
+    { value: 'purple', color: '#8B5CF6' },
+    { value: 'pink', color: '#EC4899' },
+    { value: 'red', color: '#EF4444' },
+    { value: 'orange', color: '#F97316' },
+    { value: 'green', color: '#22C55E' },
+    { value: 'teal', color: '#14B8A6' }
+  ];
   import { modalState, closeModal } from '../stores/ui';
 
   function toggleSyntaxHighlight(type: SyntaxHighlightType) {
@@ -146,6 +156,23 @@
                 on:input={(e) => updateSetting('lineHeight', parseFloat(e.currentTarget.value))}
               />
               <span class="slider-value">{$settings.lineHeight.toFixed(1)}</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <span class="setting-label">Accent Color</span>
+            <div class="color-buttons">
+              {#each accentColors as { value, color }}
+                <button
+                  class="color-btn"
+                  class:active={$settings.accentColor === value}
+                  on:click={() => updateSetting('accentColor', value)}
+                  aria-label="{value} accent color"
+                  style="--btn-color: {color}"
+                >
+                  <span class="color-swatch"></span>
+                </button>
+              {/each}
             </div>
           </div>
         </section>
@@ -558,5 +585,42 @@
 
   .syntax-btn.active:hover {
     box-shadow: var(--glow-accent);
+  }
+
+  /* Color picker buttons */
+  .color-buttons {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .color-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-fast);
+  }
+
+  .color-btn:hover {
+    transform: scale(1.1);
+  }
+
+  .color-btn.active {
+    background: var(--color-bg-tertiary);
+  }
+
+  .color-btn .color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-full);
+    background: var(--btn-color);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1), var(--shadow-sm);
+    transition: all var(--transition-fast);
+  }
+
+  .color-btn.active .color-swatch {
+    box-shadow: 0 0 0 2px var(--color-bg-secondary), 0 0 0 4px var(--btn-color);
   }
 </style>

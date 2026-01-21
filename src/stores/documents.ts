@@ -22,10 +22,28 @@ export const saveStatus = writable<'saved' | 'saving' | 'unsaved'>('saved');
 // Debounce timer for auto-save
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// Extract title from content (first # heading)
+// Extract title from content (first non-empty line, stripping markdown formatting)
 function extractTitleFromContent(content: string): string | null {
-  const match = content.match(/^#\s+(.+)$/m);
-  return match ? match[1].trim() : null;
+  // Get first non-empty line
+  const lines = content.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed) {
+      // Strip markdown formatting: headings, bold, italic, etc.
+      let title = trimmed
+        .replace(/^#{1,6}\s+/, '')  // Remove heading markers
+        .replace(/\*\*(.+?)\*\*/g, '$1')  // Remove bold
+        .replace(/\*(.+?)\*/g, '$1')  // Remove italic
+        .replace(/__(.+?)__/g, '$1')  // Remove bold (alt)
+        .replace(/_(.+?)_/g, '$1')  // Remove italic (alt)
+        .replace(/~~(.+?)~~/g, '$1')  // Remove strikethrough
+        .replace(/`(.+?)`/g, '$1')  // Remove inline code
+        .replace(/\[(.+?)\]\(.+?\)/g, '$1')  // Remove links, keep text
+        .trim();
+      return title || null;
+    }
+  }
+  return null;
 }
 
 // Load all documents
@@ -45,7 +63,7 @@ export async function loadDocument(id: number): Promise<void> {
 
 // Create a new document
 export async function newDocument(): Promise<number> {
-  const id = await createDocument('Untitled', '# Untitled\n\n');
+  const id = await createDocument('Untitled', '');
   await loadDocuments();
   await loadDocument(id);
   return id;
@@ -89,19 +107,25 @@ export function updateContent(content: string): void {
   }, 1000);
 }
 
-// Update document title (now updates the content's first heading)
+// Update document title (updates the first line of content)
 export async function updateTitle(title: string): Promise<void> {
   const doc = get(currentDocument);
   if (!doc || !doc.id) return;
 
-  // Update the first # heading in content, or add one
+  // Replace first line with new title, or add it if content is empty
   let newContent = doc.content;
-  const hasHeading = /^#\s+.+$/m.test(newContent);
+  const lines = newContent.split('\n');
 
-  if (hasHeading) {
-    newContent = newContent.replace(/^#\s+.+$/m, `# ${title}`);
+  if (lines.length > 0 && lines[0].trim()) {
+    // Replace first line
+    lines[0] = title;
+    newContent = lines.join('\n');
+  } else if (newContent.trim() === '') {
+    // Empty document, just set the title
+    newContent = title + '\n';
   } else {
-    newContent = `# ${title}\n\n${newContent}`;
+    // First line is empty, prepend title
+    newContent = title + '\n' + newContent;
   }
 
   currentDocument.set({ ...doc, title, content: newContent });
