@@ -272,7 +272,7 @@
       <div class="color-dropdown">
         <button
           class="format-btn"
-          on:click|stopPropagation={() => showTextColorMenu = !showTextColorMenu}
+          on:mousedown|preventDefault|stopPropagation={() => showTextColorMenu = !showTextColorMenu}
           title="Text Color"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

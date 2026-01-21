@@ -3,9 +3,6 @@ import { getSetting, setSetting } from '../lib/db';
 
 export type Theme = 'light' | 'dark';
 export type FontFamily = 'mono' | 'serif' | 'sans';
-
-export type SyntaxHighlightType = 'nouns' | 'verbs' | 'adjectives' | 'adverbs' | 'conjunctions';
-
 export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal';
 
 export interface Settings {
@@ -20,7 +17,6 @@ export interface Settings {
   showReadingTime: boolean;
   sidebarOpen: boolean;
   showFormatting: boolean;
-  syntaxHighlight: SyntaxHighlightType[];
   accentColor: AccentColor;
 }
 
@@ -36,7 +32,6 @@ const defaultSettings: Settings = {
   showReadingTime: true,
   sidebarOpen: false,
   showFormatting: false,
-  syntaxHighlight: [],
   accentColor: 'blue'
 };
 

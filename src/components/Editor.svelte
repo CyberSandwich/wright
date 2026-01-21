@@ -49,17 +49,6 @@
     stats = calculateStats(content);
   }, 300);
 
-  // Syntax highlighting - just sets data attribute, no DOM manipulation
-  function updateSyntaxHighlighting() {
-    if (!editorContainer) return;
-
-    if ($settings.syntaxHighlight.length === 0) {
-      editorContainer.removeAttribute('data-syntax-modes');
-    } else {
-      editorContainer.setAttribute('data-syntax-modes', $settings.syntaxHighlight.join(' '));
-    }
-  }
-
   function triggerTypingEffect() {
     isTyping = true;
     clearTimeout(typingTimeout);
@@ -291,15 +280,33 @@
   // Text color
   export function setTextColor(color: string) {
     if (!editorInstance || !editorContainer) return;
+
+    // Save the current selection before focusing
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const savedRange = selection.getRangeAt(0).cloneRange();
+
     const proseMirror = editorContainer.querySelector('.ProseMirror') as HTMLElement;
     if (proseMirror) {
       proseMirror.focus();
+
+      // Restore the selection
       requestAnimationFrame(() => {
-        if (color === '') {
-          document.execCommand('removeFormat', false);
-        } else {
-          document.execCommand('foreColor', false, color);
+        const sel = window.getSelection();
+        if (sel) {
+          sel.removeAllRanges();
+          sel.addRange(savedRange);
         }
+
+        // Apply color after selection is restored
+        requestAnimationFrame(() => {
+          if (color === '') {
+            document.execCommand('removeFormat', false);
+          } else {
+            document.execCommand('foreColor', false, color);
+          }
+        });
       });
     }
   }
@@ -323,19 +330,19 @@
   }
 
   export function openLinkPopup() {
-    if (!editorContainer) return;
+    if (!editorWrapper) return;
 
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
 
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
-    const containerRect = editorContainer.getBoundingClientRect();
+    const wrapperRect = editorWrapper.getBoundingClientRect();
 
-    // Position popup near selection
+    // Position popup near selection, relative to the wrapper
     linkPopupPosition = {
-      x: rect.left - containerRect.left + rect.width / 2,
-      y: rect.bottom - containerRect.top + 8
+      x: rect.left - wrapperRect.left + rect.width / 2,
+      y: rect.bottom - wrapperRect.top + 8
     };
 
     existingLinkHref = detectExistingLink();
@@ -484,11 +491,6 @@
     } else {
       clearFocusMode();
     }
-  }
-
-  // React to syntax highlight changes
-  $: if (isInitialized && editorContainer) {
-    updateSyntaxHighlighting();
   }
 
   $: fontFamily = $settings.fontFamily === 'mono'
@@ -791,38 +793,6 @@
   /* Selection */
   .editor-container :global(.milkdown .ProseMirror ::selection) {
     background: var(--color-selection);
-  }
-
-  /* Syntax highlighting styles */
-  .editor-container :global(.syntax-hl) {
-    border-radius: 2px;
-    padding: 0 1px;
-    transition: background 0.15s ease;
-  }
-
-  .editor-container :global(.syntax-nouns) {
-    color: var(--color-syntax-noun, #4A9EFF);
-  }
-
-  .editor-container :global(.syntax-verbs) {
-    color: var(--color-syntax-verb, #FF6B6B);
-  }
-
-  .editor-container :global(.syntax-adjectives) {
-    color: var(--color-syntax-adjective, #9D7CD8);
-  }
-
-  .editor-container :global(.syntax-adverbs) {
-    color: var(--color-syntax-adverb, #7DCE82);
-  }
-
-  .editor-container :global(.syntax-conjunctions) {
-    color: var(--color-syntax-conjunction, #F7B955);
-  }
-
-  /* Syntax highlighting - placeholder for future ProseMirror decoration implementation */
-  .editor-container[data-syntax-modes] {
-    /* Syntax modes are stored but visual highlighting requires ProseMirror decorations */
   }
 
   /* Focus mode - dim non-active blocks */

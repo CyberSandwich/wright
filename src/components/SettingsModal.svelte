@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { settings, updateSetting, type Theme, type FontFamily, type SyntaxHighlightType, type AccentColor } from '../stores/settings';
+  import { settings, updateSetting, type Theme, type FontFamily, type AccentColor } from '../stores/settings';
+  import { modalState, closeModal } from '../stores/ui';
 
   const accentColors: { value: AccentColor; color: string }[] = [
     { value: 'blue', color: '#3B82F6' },
@@ -10,16 +11,6 @@
     { value: 'green', color: '#22C55E' },
     { value: 'teal', color: '#14B8A6' }
   ];
-  import { modalState, closeModal } from '../stores/ui';
-
-  function toggleSyntaxHighlight(type: SyntaxHighlightType) {
-    const current = $settings.syntaxHighlight;
-    if (current.includes(type)) {
-      updateSetting('syntaxHighlight', current.filter(t => t !== type));
-    } else {
-      updateSetting('syntaxHighlight', [...current, type]);
-    }
-  }
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
@@ -220,50 +211,6 @@
           </div>
         </section>
 
-        <section class="settings-section">
-          <h3>Writing</h3>
-
-          <div class="setting-row">
-            <span class="setting-label">Syntax Highlight</span>
-            <div class="syntax-buttons">
-              <button
-                class="syntax-btn"
-                class:active={$settings.syntaxHighlight.includes('nouns')}
-                on:click={() => toggleSyntaxHighlight('nouns')}
-              >
-                Nouns
-              </button>
-              <button
-                class="syntax-btn"
-                class:active={$settings.syntaxHighlight.includes('verbs')}
-                on:click={() => toggleSyntaxHighlight('verbs')}
-              >
-                Verbs
-              </button>
-              <button
-                class="syntax-btn"
-                class:active={$settings.syntaxHighlight.includes('adjectives')}
-                on:click={() => toggleSyntaxHighlight('adjectives')}
-              >
-                Adjectives
-              </button>
-              <button
-                class="syntax-btn"
-                class:active={$settings.syntaxHighlight.includes('adverbs')}
-                on:click={() => toggleSyntaxHighlight('adverbs')}
-              >
-                Adverbs
-              </button>
-              <button
-                class="syntax-btn"
-                class:active={$settings.syntaxHighlight.includes('conjunctions')}
-                on:click={() => toggleSyntaxHighlight('conjunctions')}
-              >
-                Conjunctions
-              </button>
-            </div>
-          </div>
-        </section>
       </div>
     </div>
   </div>
@@ -552,39 +499,6 @@
     font-size: var(--font-size-sm);
     color: var(--color-text-muted);
     margin: var(--space-1) 0 var(--space-3) 0;
-  }
-
-  /* Syntax highlight buttons */
-  .syntax-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .syntax-btn {
-    padding: var(--space-2) var(--space-3);
-    background: var(--color-bg-tertiary);
-    border: 2px solid transparent;
-    border-radius: var(--radius-lg);
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    transition: all var(--transition-fast);
-  }
-
-  .syntax-btn:hover {
-    border-color: var(--color-border);
-    color: var(--color-text-primary);
-  }
-
-  .syntax-btn.active {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
-    color: white;
-  }
-
-  .syntax-btn.active:hover {
-    box-shadow: var(--glow-accent);
   }
 
   /* Color picker buttons */
