@@ -9,9 +9,18 @@ test.describe('Wright - Markdown Editor', () => {
     await page.waitForSelector('.milkdown', { timeout: 10000 });
   });
 
+  // Helper function to open sidebar
+  async function openSidebar(page: any) {
+    const sidebarOpen = await page.locator('.sidebar.open').isVisible();
+    if (!sidebarOpen) {
+      await page.click('.sidebar-toggle-collapsed');
+      await page.waitForSelector('.sidebar.open', { timeout: 5000 });
+    }
+  }
+
   test.describe('Initial Load', () => {
     test('should display the app with all main components', async ({ page }) => {
-      // Check sidebar is visible
+      // Sidebar exists (may be closed by default)
       await expect(page.locator('.sidebar')).toBeVisible();
 
       // Check toolbar is visible
@@ -20,11 +29,15 @@ test.describe('Wright - Markdown Editor', () => {
       // Check editor is visible
       await expect(page.locator('.editor-wrapper')).toBeVisible();
 
-      // Check for Wright branding
+      // Open sidebar to check branding
+      await openSidebar(page);
       await expect(page.locator('.sidebar-header h2')).toHaveText('Wright');
     });
 
     test('should create a default document on first load', async ({ page }) => {
+      // Open sidebar to see documents
+      await openSidebar(page);
+
       // Should have at least one document in the list
       const documentItems = page.locator('.document-item');
       await expect(documentItems).toHaveCount(1);
@@ -40,6 +53,9 @@ test.describe('Wright - Markdown Editor', () => {
 
   test.describe('Document Management', () => {
     test('should create a new document', async ({ page }) => {
+      // Open sidebar
+      await openSidebar(page);
+
       // Get initial document count
       const initialCount = await page.locator('.document-item').count();
 
@@ -66,11 +82,15 @@ test.describe('Wright - Markdown Editor', () => {
       // Verify title updated
       await expect(page.locator('.title-button')).toHaveText('My Test Document');
 
-      // Verify in sidebar
+      // Open sidebar to verify
+      await openSidebar(page);
       await expect(page.locator('.document-item.active .doc-title')).toHaveText('My Test Document');
     });
 
     test('should switch between documents', async ({ page }) => {
+      // Open sidebar
+      await openSidebar(page);
+
       // Create a second document
       await page.click('[aria-label="Create new document"]');
       await page.waitForTimeout(500);
@@ -89,6 +109,9 @@ test.describe('Wright - Markdown Editor', () => {
     });
 
     test('should delete a document with confirmation', async ({ page }) => {
+      // Open sidebar
+      await openSidebar(page);
+
       // Create a document to delete
       await page.click('[aria-label="Create new document"]');
       await page.waitForTimeout(500);
@@ -187,25 +210,24 @@ test.describe('Wright - Markdown Editor', () => {
 
   test.describe('Sidebar', () => {
     test('should toggle sidebar visibility', async ({ page }) => {
-      // Sidebar should be open initially
-      await expect(page.locator('.sidebar.open')).toBeVisible();
-
-      // Click toggle button
-      await page.click('.toggle-btn');
-
-      // Sidebar should be collapsed
+      // Sidebar should be closed by default
       await expect(page.locator('.sidebar:not(.open)')).toBeVisible();
 
-      // Click the collapsed toggle
+      // Click the collapsed toggle to open
       await page.click('.sidebar-toggle-collapsed');
-
-      // Sidebar should be open again
       await expect(page.locator('.sidebar.open')).toBeVisible();
+
+      // Click toggle button to close
+      await page.click('.toggle-btn');
+      await expect(page.locator('.sidebar:not(.open)')).toBeVisible();
     });
   });
 
   test.describe('Settings Modal', () => {
     test('should open and close settings modal', async ({ page }) => {
+      // Open sidebar first to access settings
+      await openSidebar(page);
+
       // Click settings button
       await page.click('[aria-label="Open settings"]');
 
@@ -222,6 +244,9 @@ test.describe('Wright - Markdown Editor', () => {
     });
 
     test('should close settings with Escape key', async ({ page }) => {
+      // Open sidebar first
+      await openSidebar(page);
+
       await page.click('[aria-label="Open settings"]');
       await expect(page.locator('[role="dialog"]')).toBeVisible();
 
@@ -230,6 +255,9 @@ test.describe('Wright - Markdown Editor', () => {
     });
 
     test('should change font size', async ({ page }) => {
+      // Open sidebar first
+      await openSidebar(page);
+
       await page.click('[aria-label="Open settings"]');
 
       // Find font size slider
@@ -271,6 +299,9 @@ test.describe('Wright - Markdown Editor', () => {
     });
 
     test('should support click-based navigation', async ({ page }) => {
+      // Open sidebar first
+      await openSidebar(page);
+
       // Click on new document button
       await page.click('[aria-label="Create new document"]');
       await page.waitForTimeout(500);
@@ -331,6 +362,20 @@ test.describe('Wright - Markdown Editor', () => {
 
       // Focus mode should be off
       await expect(page.locator('.editor-wrapper:not(.focus-mode)')).toBeVisible();
+    });
+
+    test('should toggle typewriter mode', async ({ page }) => {
+      // Click typewriter mode button
+      await page.click('[aria-label="Toggle typewriter mode"]');
+
+      // Editor should have typewriter mode class
+      await expect(page.locator('.editor-wrapper.typewriter-mode')).toBeVisible();
+
+      // Click again to disable
+      await page.click('[aria-label="Toggle typewriter mode"]');
+
+      // Typewriter mode should be off
+      await expect(page.locator('.editor-wrapper:not(.typewriter-mode)')).toBeVisible();
     });
   });
 

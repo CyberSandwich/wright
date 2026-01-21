@@ -275,18 +275,17 @@
   .sidebar-toggle-collapsed {
     position: fixed;
     left: var(--space-2);
-    top: 50%;
-    transform: translateY(-50%);
+    top: var(--space-2);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 48px;
+    width: 36px;
+    height: 36px;
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     color: var(--color-text-secondary);
-    z-index: 100;
+    z-index: 1000;
     transition: background var(--transition-fast), color var(--transition-fast);
   }
 

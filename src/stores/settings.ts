@@ -25,7 +25,7 @@ const defaultSettings: Settings = {
   typewriterMode: false,
   showWordCount: true,
   showReadingTime: true,
-  sidebarOpen: true
+  sidebarOpen: false
 };
 
 export const settings = writable<Settings>(defaultSettings);

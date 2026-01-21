@@ -1,6 +1,6 @@
 <script lang="ts">
   import { currentDocument, updateTitle, deleteCurrentDocument, saveNow, updateContent } from '../stores/documents';
-  import { settings, toggleFocusMode, updateSetting } from '../stores/settings';
+  import { settings, toggleFocusMode, toggleTypewriterMode, updateSetting } from '../stores/settings';
   import { openFind, openModal } from '../stores/ui';
   import { fileOpen, fileSave } from 'browser-fs-access';
 
@@ -199,13 +199,32 @@
       class="toolbar-button"
       class:active={$settings.focusMode}
       on:click={toggleFocusMode}
-      title="Focus mode (Cmd+Shift+D)"
+      title="Focus mode"
       aria-label="Toggle focus mode"
       aria-pressed={$settings.focusMode}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"/>
         <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </button>
+
+    <button
+      class="toolbar-button"
+      class:active={$settings.typewriterMode}
+      on:click={toggleTypewriterMode}
+      title="Typewriter mode"
+      aria-label="Toggle typewriter mode"
+      aria-pressed={$settings.typewriterMode}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="4" width="20" height="16" rx="2"/>
+        <line x1="6" y1="8" x2="6" y2="8"/>
+        <line x1="10" y1="8" x2="10" y2="8"/>
+        <line x1="14" y1="8" x2="14" y2="8"/>
+        <line x1="18" y1="8" x2="18" y2="8"/>
+        <line x1="6" y1="16" x2="18" y2="16"/>
+        <line x1="8" y1="12" x2="16" y2="12"/>
       </svg>
     </button>
 
