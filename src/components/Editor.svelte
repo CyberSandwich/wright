@@ -8,7 +8,6 @@
   import { currentDocument, currentDocumentId, updateContent } from '../stores/documents';
   import { settings } from '../stores/settings';
   import { calculateStats, debounce, formatTime, type TextStats } from '../lib/stats';
-  import { applySyntaxHighlighting, clearSyntaxHighlighting } from '../lib/syntax-highlight';
 
   const dispatch = createEventDispatcher();
 
@@ -43,34 +42,16 @@
     stats = calculateStats(content);
   }, 300);
 
-  // Debounced syntax highlighting to avoid performance issues
-  let syntaxObserver: MutationObserver | null = null;
-  let lastSyntaxContent = '';
-
-  const applySyntaxHighlightingDebounced = debounce((content: string) => {
+  // Syntax highlighting - just sets data attribute, no DOM manipulation
+  function updateSyntaxHighlighting() {
     if (!editorContainer) return;
-    const proseMirror = editorContainer.querySelector('.ProseMirror');
-    if (!proseMirror) return;
 
-    if ($settings.syntaxHighlight === 'off') {
-      clearSyntaxHighlighting(proseMirror as HTMLElement);
-      return;
+    if ($settings.syntaxHighlight.length === 0) {
+      editorContainer.removeAttribute('data-syntax-modes');
+    } else {
+      editorContainer.setAttribute('data-syntax-modes', $settings.syntaxHighlight.join(' '));
     }
-
-    // Store content for re-application
-    lastSyntaxContent = content;
-
-    // Apply highlighting after a frame to ensure ProseMirror has rendered
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (!editorContainer) return;
-        const pm = editorContainer.querySelector('.ProseMirror');
-        if (pm) {
-          applySyntaxHighlighting(pm as HTMLElement, lastSyntaxContent, $settings.syntaxHighlight);
-        }
-      });
-    });
-  }, 300);
+  }
 
   function triggerTypingEffect() {
     isTyping = true;
@@ -305,10 +286,6 @@
           if ($settings.typewriterMode) {
             requestAnimationFrame(() => applyTypewriterMode());
           }
-          // Apply syntax highlighting
-          if ($settings.syntaxHighlight !== 'off') {
-            applySyntaxHighlightingDebounced(markdown);
-          }
         });
       })
       .use(commonmark)
@@ -359,13 +336,8 @@
   }
 
   // React to syntax highlight changes
-  $: if (isInitialized && editorContainer && $currentDocument) {
-    if ($settings.syntaxHighlight === 'off') {
-      const proseMirror = editorContainer.querySelector('.ProseMirror');
-      if (proseMirror) clearSyntaxHighlighting(proseMirror as HTMLElement);
-    } else {
-      applySyntaxHighlightingDebounced($currentDocument.content);
-    }
+  $: if (isInitialized && editorContainer) {
+    updateSyntaxHighlighting();
   }
 
   $: fontFamily = $settings.fontFamily === 'mono'
@@ -661,13 +633,9 @@
     color: var(--color-syntax-conjunction, #F7B955);
   }
 
-  /* Dim non-highlighted text when syntax mode is active */
-  .editor-container[data-syntax-mode] :global(.milkdown .ProseMirror) {
-    color: var(--color-text-muted);
-  }
-
-  .editor-container[data-syntax-mode] :global(.syntax-hl) {
-    font-weight: 500;
+  /* Syntax highlighting - placeholder for future ProseMirror decoration implementation */
+  .editor-container[data-syntax-modes] {
+    /* Syntax modes are stored but visual highlighting requires ProseMirror decorations */
   }
 
   /* Focus mode - dim non-active blocks */

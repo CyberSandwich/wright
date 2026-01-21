@@ -1,6 +1,15 @@
 <script lang="ts">
-  import { settings, updateSetting, type Theme, type FontFamily, type SyntaxHighlightMode } from '../stores/settings';
+  import { settings, updateSetting, type Theme, type FontFamily, type SyntaxHighlightType } from '../stores/settings';
   import { modalState, closeModal } from '../stores/ui';
+
+  function toggleSyntaxHighlight(type: SyntaxHighlightType) {
+    const current = $settings.syntaxHighlight;
+    if (current.includes(type)) {
+      updateSetting('syntaxHighlight', current.filter(t => t !== type));
+    } else {
+      updateSetting('syntaxHighlight', [...current, type]);
+    }
+  }
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
@@ -189,47 +198,39 @@
 
           <div class="setting-row">
             <span class="setting-label">Syntax Highlight</span>
-            <p class="setting-description">Highlight parts of speech like iA Writer</p>
             <div class="syntax-buttons">
               <button
                 class="syntax-btn"
-                class:active={$settings.syntaxHighlight === 'off'}
-                on:click={() => updateSetting('syntaxHighlight', 'off')}
-              >
-                Off
-              </button>
-              <button
-                class="syntax-btn"
-                class:active={$settings.syntaxHighlight === 'nouns'}
-                on:click={() => updateSetting('syntaxHighlight', 'nouns')}
+                class:active={$settings.syntaxHighlight.includes('nouns')}
+                on:click={() => toggleSyntaxHighlight('nouns')}
               >
                 Nouns
               </button>
               <button
                 class="syntax-btn"
-                class:active={$settings.syntaxHighlight === 'verbs'}
-                on:click={() => updateSetting('syntaxHighlight', 'verbs')}
+                class:active={$settings.syntaxHighlight.includes('verbs')}
+                on:click={() => toggleSyntaxHighlight('verbs')}
               >
                 Verbs
               </button>
               <button
                 class="syntax-btn"
-                class:active={$settings.syntaxHighlight === 'adjectives'}
-                on:click={() => updateSetting('syntaxHighlight', 'adjectives')}
+                class:active={$settings.syntaxHighlight.includes('adjectives')}
+                on:click={() => toggleSyntaxHighlight('adjectives')}
               >
                 Adjectives
               </button>
               <button
                 class="syntax-btn"
-                class:active={$settings.syntaxHighlight === 'adverbs'}
-                on:click={() => updateSetting('syntaxHighlight', 'adverbs')}
+                class:active={$settings.syntaxHighlight.includes('adverbs')}
+                on:click={() => toggleSyntaxHighlight('adverbs')}
               >
                 Adverbs
               </button>
               <button
                 class="syntax-btn"
-                class:active={$settings.syntaxHighlight === 'conjunctions'}
-                on:click={() => updateSetting('syntaxHighlight', 'conjunctions')}
+                class:active={$settings.syntaxHighlight.includes('conjunctions')}
+                on:click={() => toggleSyntaxHighlight('conjunctions')}
               >
                 Conjunctions
               </button>
