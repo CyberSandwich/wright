@@ -110,6 +110,8 @@ Focus mode dims all blocks except the active one. Key implementation details:
 - **Added underline support**: Created custom Milkdown plugin (`src/lib/underline-plugin.ts`) using `$markSchema` and `$command`
 - **Fixed Focus Mode active highlighting**: ProseMirror constantly recreates DOM nodes, which stripped inline styles. Solution uses dynamic `<style>` element with nth-child CSS selectors that persist through DOM updates
 - **Fixed Svelte store access in functions**: Use `get(settings)` from `svelte/store` to read store values in non-reactive contexts (regular functions, callbacks)
+- **Added bullet and numbered list buttons to toolbar**: Integrated `wrapInBulletListCommand` and `wrapInOrderedListCommand` from `@milkdown/preset-commonmark`
+- **Fixed underline toMarkdown serialization**: Previous implementation caused literal `<u>` tags to appear in the document. Fixed by properly handling the mark in the serializer
 
 ## Important Reminders
 
