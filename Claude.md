@@ -112,6 +112,8 @@ Focus mode dims all blocks except the active one. Key implementation details:
 - **Fixed Svelte store access in functions**: Use `get(settings)` from `svelte/store` to read store values in non-reactive contexts (regular functions, callbacks)
 - **Added bullet and numbered list buttons to toolbar**: Integrated `wrapInBulletListCommand` and `wrapInOrderedListCommand` from `@milkdown/preset-commonmark`
 - **Fixed underline toMarkdown serialization**: Previous implementation caused literal `<u>` tags to appear in the document. Fixed by properly handling the mark in the serializer
+- **Improved typewriter mode**: Now scrolls instantly on large cursor jumps (Enter/newlines) instead of lagging behind. Uses threshold detection to differentiate between normal typing and line changes
+- **Added sentence-level focus mode**: Uses CSS Highlight API to dim sentences outside the current one within the active paragraph. Falls back gracefully on browsers without Highlight API support
 
 ## Important Reminders
 
