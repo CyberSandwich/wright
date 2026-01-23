@@ -123,7 +123,7 @@ Focus mode dims all blocks except the active one. Key implementation details:
 **After completing any changes:**
 1. Run `npm run check` to verify TypeScript/Svelte types
 2. Run `npm run build` to ensure production build succeeds
-3. If build passes, commit and push to GitHub
+3. **ALWAYS commit and push to GitHub after successful build** - do not wait for user to ask
 
 ## Git Workflow
 
