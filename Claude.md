@@ -114,6 +114,11 @@ Focus mode dims all blocks except the active one. Key implementation details:
 - **Fixed underline toMarkdown serialization**: Previous implementation caused literal `<u>` tags to appear in the document. Fixed by properly handling the mark in the serializer
 - **Improved typewriter mode**: Now scrolls instantly on large cursor jumps (Enter/newlines) instead of lagging behind. Uses threshold detection to differentiate between normal typing and line changes
 - **Added sentence-level focus mode**: Uses CSS Highlight API to dim sentences outside the current one within the active paragraph. Falls back gracefully on browsers without Highlight API support
+- **Improved mobile editing experience**:
+  - Added X close button to sidebar with "Documents" title header
+  - Created expandable mobile format bar with all formatting options (bold, italic, underline, strikethrough, lists, links, headings)
+  - 44px touch targets for easy mobile tapping
+  - Horizontally scrollable format row for small screens
 
 ## Important Reminders
 
