@@ -11,6 +11,7 @@
   let showFontMenu = false;
   let showHeadingMenu = false;
   let showTextColorMenu = false;
+  let showMobileFormatBar = false;
 
   const textColors = [
     { name: 'Default', value: '' },
@@ -134,6 +135,13 @@
     showFontMenu = false;
     showHeadingMenu = false;
     showTextColorMenu = false;
+  }
+
+  function toggleMobileFormatBar() {
+    showMobileFormatBar = !showMobileFormatBar;
+    if (!showMobileFormatBar) {
+      closeMenus();
+    }
   }
 
   function setTextColor(color: string) {
@@ -432,6 +440,20 @@
   </div>
 
   <div class="toolbar-right">
+    <!-- Mobile format toggle button (only visible on mobile) -->
+    <button
+      class="mobile-format-toggle"
+      class:active={showMobileFormatBar}
+      on:click={toggleMobileFormatBar}
+      title="Formatting options"
+      aria-label="Toggle formatting options"
+      aria-expanded={showMobileFormatBar}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 7h16M4 12h10M4 17h6"/>
+      </svg>
+    </button>
+
     <!-- Export dropdown -->
     <div class="dropdown-container">
       <button
@@ -470,6 +492,129 @@
     </button>
   </div>
 </header>
+
+<!-- Mobile format bar (only visible on mobile when toggled) -->
+{#if showMobileFormatBar}
+  <div class="mobile-format-bar" role="toolbar" aria-label="Mobile formatting options">
+    <div class="mobile-format-row">
+      <button
+        class="mobile-format-btn"
+        class:active={activeFormats.bold}
+        on:mousedown|preventDefault={toggleBold}
+        title="Bold"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+          <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+        </svg>
+      </button>
+      <button
+        class="mobile-format-btn"
+        class:active={activeFormats.italic}
+        on:mousedown|preventDefault={toggleItalic}
+        title="Italic"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="4" x2="10" y2="4"/>
+          <line x1="14" y1="20" x2="5" y2="20"/>
+          <line x1="15" y1="4" x2="9" y2="20"/>
+        </svg>
+      </button>
+      <button
+        class="mobile-format-btn"
+        class:active={activeFormats.underline}
+        on:mousedown|preventDefault={toggleUnderline}
+        title="Underline"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/>
+          <line x1="4" y1="21" x2="20" y2="21"/>
+        </svg>
+      </button>
+      <button
+        class="mobile-format-btn"
+        class:active={activeFormats.strikethrough}
+        on:mousedown|preventDefault={toggleStrikethrough}
+        title="Strikethrough"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <path d="M17.5 7.5c-1-1.5-2.5-2.5-5.5-2.5-4 0-6 2-6 4 0 1.5 1 3 6 4"/>
+          <path d="M8.5 16.5c1 1 2.5 2.5 5.5 2.5 4 0 6-2 6-4"/>
+        </svg>
+      </button>
+      <div class="mobile-format-divider"></div>
+      <button
+        class="mobile-format-btn"
+        on:mousedown|preventDefault={toggleBulletList}
+        title="Bullet List"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="9" y1="6" x2="20" y2="6"/>
+          <line x1="9" y1="12" x2="20" y2="12"/>
+          <line x1="9" y1="18" x2="20" y2="18"/>
+          <circle cx="4" cy="6" r="1.5" fill="currentColor"/>
+          <circle cx="4" cy="12" r="1.5" fill="currentColor"/>
+          <circle cx="4" cy="18" r="1.5" fill="currentColor"/>
+        </svg>
+      </button>
+      <button
+        class="mobile-format-btn"
+        on:mousedown|preventDefault={toggleOrderedList}
+        title="Numbered List"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="10" y1="6" x2="20" y2="6"/>
+          <line x1="10" y1="12" x2="20" y2="12"/>
+          <line x1="10" y1="18" x2="20" y2="18"/>
+          <text x="3" y="8" font-size="7" fill="currentColor" font-family="sans-serif">1</text>
+          <text x="3" y="14" font-size="7" fill="currentColor" font-family="sans-serif">2</text>
+          <text x="3" y="20" font-size="7" fill="currentColor" font-family="sans-serif">3</text>
+        </svg>
+      </button>
+      <button
+        class="mobile-format-btn"
+        on:mousedown|preventDefault={toggleLink}
+        title="Add Link"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+        </svg>
+      </button>
+    </div>
+    <div class="mobile-format-row">
+      <button
+        class="mobile-heading-btn"
+        class:active={activeFormats.heading === null || activeFormats.heading === 0}
+        on:mousedown|preventDefault={() => setHeading(0)}
+      >
+        Body
+      </button>
+      <button
+        class="mobile-heading-btn"
+        class:active={activeFormats.heading === 1}
+        on:mousedown|preventDefault={() => setHeading(1)}
+      >
+        H1
+      </button>
+      <button
+        class="mobile-heading-btn"
+        class:active={activeFormats.heading === 2}
+        on:mousedown|preventDefault={() => setHeading(2)}
+      >
+        H2
+      </button>
+      <button
+        class="mobile-heading-btn"
+        class:active={activeFormats.heading === 3}
+        on:mousedown|preventDefault={() => setHeading(3)}
+      >
+        H3
+      </button>
+    </div>
+  </div>
+{/if}
 
 <style>
   .toolbar {
@@ -829,6 +974,124 @@
     .export-btn {
       padding: 0 var(--space-3);
     }
+    .mobile-format-toggle {
+      display: flex;
+    }
+  }
+
+  /* Mobile format toggle button - hidden on desktop */
+  .mobile-format-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-lg);
+    color: var(--color-text-secondary);
+    transition: all var(--transition-fast);
+  }
+
+  .mobile-format-toggle:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+  }
+
+  .mobile-format-toggle.active {
+    background: var(--color-accent);
+    color: white;
+  }
+
+  /* Mobile format bar */
+  .mobile-format-bar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border-light);
+    animation: slideDown 0.2s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .mobile-format-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .mobile-format-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-format-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: 44px;
+    border-radius: var(--radius-lg);
+    color: var(--color-text-secondary);
+    background: var(--color-bg-tertiary);
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+  }
+
+  .mobile-format-btn:hover,
+  .mobile-format-btn:active {
+    background: var(--color-border);
+    color: var(--color-text-primary);
+  }
+
+  .mobile-format-btn.active {
+    background: var(--color-accent);
+    color: white;
+  }
+
+  .mobile-format-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--color-border);
+    margin: 0 var(--space-1);
+    flex-shrink: 0;
+  }
+
+  .mobile-heading-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-tertiary);
+    transition: all var(--transition-fast);
+  }
+
+  .mobile-heading-btn:hover,
+  .mobile-heading-btn:active {
+    background: var(--color-border);
+    color: var(--color-text-primary);
+  }
+
+  .mobile-heading-btn.active {
+    background: var(--color-accent);
+    color: white;
   }
 
   /* Safe area support for mobile */

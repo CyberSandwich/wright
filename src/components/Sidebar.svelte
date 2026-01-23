@@ -174,6 +174,21 @@
       on:dragleave={handleDragLeave}
       on:drop={handleDrop}
     >
+    <!-- Mobile close button header -->
+    <div class="sidebar-header">
+      <span class="sidebar-title">Documents</span>
+      <button
+        class="close-btn"
+        on:click={toggleSidebar}
+        aria-label="Close document list"
+        title="Close"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
     <div class="sidebar-content">
       {#if isDragOver}
         <div class="drop-indicator">
@@ -358,12 +373,45 @@
     background: var(--color-bg-tertiary);
   }
 
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-4) var(--space-2);
+    border-bottom: 1px solid var(--color-border-light);
+  }
+
+  .sidebar-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    color: var(--color-text-secondary);
+    transition: all var(--transition-fast);
+  }
+
+  .close-btn:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+  }
+
+  .close-btn:active {
+    transform: scale(0.95);
+  }
+
   .sidebar-content {
     flex: 1;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    padding-top: var(--space-4);
   }
 
   .new-btn-container {
