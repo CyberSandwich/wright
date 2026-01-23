@@ -97,7 +97,14 @@ export function updateContent(content: string): void {
           updateData.title = newTitle;
         }
         await updateDocument(doc.id, updateData);
-        await loadDocuments();
+        // Optimistic update: only update the document in the list instead of reloading all
+        documents.update(docs => {
+          const index = docs.findIndex(d => d.id === doc.id);
+          if (index !== -1) {
+            docs[index] = { ...docs[index], content, title: newTitle, updatedAt: new Date() };
+          }
+          return docs;
+        });
       }
       saveStatus.set('saved');
     } catch (error) {
@@ -164,7 +171,14 @@ export async function saveNow(): Promise<void> {
   saveStatus.set('saving');
   try {
     await updateDocument(doc.id, { content: doc.content });
-    await loadDocuments();
+    // Optimistic update instead of full reload
+    documents.update(docs => {
+      const index = docs.findIndex(d => d.id === doc.id);
+      if (index !== -1) {
+        docs[index] = { ...docs[index], content: doc.content, updatedAt: new Date() };
+      }
+      return docs;
+    });
     saveStatus.set('saved');
   } catch (error) {
     console.error('Failed to save document:', error);

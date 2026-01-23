@@ -100,6 +100,8 @@
   }
 
   // Focus mode - dim non-active paragraphs
+  let lastActiveBlock: Element | null = null; // Cache to avoid unnecessary DOM operations
+
   function applyFocusMode() {
     if (!editorContainer || !$settings.focusMode) return;
 
@@ -132,23 +134,26 @@
       }
     }
 
-    // Remove active class from all blocks, add to active one
-    const blocks = proseMirror.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre');
-    blocks.forEach((block) => {
-      block.classList.remove('focus-active');
-    });
+    // Skip DOM updates if the active block hasn't changed
+    if (activeBlock === lastActiveBlock) return;
+
+    // Only update the classes that need to change (not all blocks)
+    if (lastActiveBlock && lastActiveBlock.isConnected) {
+      lastActiveBlock.classList.remove('focus-active');
+    }
 
     if (activeBlock) {
       activeBlock.classList.add('focus-active');
     }
+
+    lastActiveBlock = activeBlock;
   }
 
   function clearFocusMode() {
-    if (!editorContainer) return;
-    const blocks = editorContainer.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre');
-    blocks.forEach((block) => {
-      block.classList.remove('focus-active');
-    });
+    if (lastActiveBlock && lastActiveBlock.isConnected) {
+      lastActiveBlock.classList.remove('focus-active');
+    }
+    lastActiveBlock = null;
   }
 
   // Typewriter mode - keep cursor vertically centered (only on typing)
@@ -156,6 +161,8 @@
   let typewriterAnimationFrame: number | null = null;
   let currentScrollTarget = 0;
   let isTypewriterAnimating = false;
+  let typewriterAnimationStartTime = 0;
+  const TYPEWRITER_MAX_ANIMATION_MS = 500; // Stop animation after 500ms max
 
   function applyTypewriterMode() {
     if (!$settings.typewriterMode) return;
@@ -190,6 +197,7 @@
       currentScrollTarget = scrollArea.scrollTop + diff;
 
       if (!isTypewriterAnimating) {
+        typewriterAnimationStartTime = performance.now();
         animateTypewriterScroll();
       }
     }
@@ -198,12 +206,20 @@
   function animateTypewriterScroll() {
     if (!scrollArea) return;
 
+    // Stop animation if it's been running too long (prevents infinite loops)
+    if (performance.now() - typewriterAnimationStartTime > TYPEWRITER_MAX_ANIMATION_MS) {
+      isTypewriterAnimating = false;
+      typewriterAnimationFrame = null;
+      return;
+    }
+
     const currentScroll = scrollArea.scrollTop;
     const diff = currentScrollTarget - currentScroll;
 
     // If we're close enough, stop animating
     if (Math.abs(diff) < 0.5) {
       isTypewriterAnimating = false;
+      typewriterAnimationFrame = null;
       return;
     }
 
@@ -225,7 +241,31 @@
     isTypewriterAnimating = false;
   }
 
+  // Debounced/throttled selection change handling to prevent excessive DOM operations
+  let selectionChangeRaf: number | null = null;
+  let lastSelectionChangeTime = 0;
+  const SELECTION_CHANGE_THROTTLE_MS = 50; // Throttle to max 20 updates/second
+
   function handleSelectionChange() {
+    const now = performance.now();
+
+    // Throttle: skip if called too recently
+    if (now - lastSelectionChangeTime < SELECTION_CHANGE_THROTTLE_MS) {
+      // Schedule one final update after throttle period
+      if (!selectionChangeRaf) {
+        selectionChangeRaf = requestAnimationFrame(() => {
+          selectionChangeRaf = null;
+          lastSelectionChangeTime = performance.now();
+          detectActiveFormats();
+          if ($settings.focusMode) {
+            applyFocusMode();
+          }
+        });
+      }
+      return;
+    }
+
+    lastSelectionChangeTime = now;
     detectActiveFormats();
     if ($settings.focusMode) {
       applyFocusMode();
@@ -469,6 +509,10 @@
   onDestroy(() => {
     document.removeEventListener('selectionchange', handleSelectionChange);
     cancelTypewriterAnimation();
+    if (selectionChangeRaf) {
+      cancelAnimationFrame(selectionChangeRaf);
+      selectionChangeRaf = null;
+    }
     if (editorInstance) {
       try {
         editorInstance.destroy();
@@ -510,8 +554,6 @@
       class:typewriter-mode={$settings.typewriterMode}
       class:typing={isTyping}
       bind:this={editorContainer}
-      on:click={() => $settings.focusMode && requestAnimationFrame(() => applyFocusMode())}
-      on:keyup={() => $settings.focusMode && requestAnimationFrame(() => applyFocusMode())}
       style="--editor-font-family: {fontFamily}; --editor-font-size: {$settings.fontSize}px; --editor-line-height: {$settings.lineHeight};"
       role="textbox"
       tabindex="0"
