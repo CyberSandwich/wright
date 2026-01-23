@@ -102,10 +102,182 @@
     dispatch('formatchange', activeFormats);
   }
 
-  // Focus mode - dim non-active paragraphs
+  // Focus mode - dim non-active paragraphs or sentences
   // Uses a dynamic <style> element with nth-child selector to persist through ProseMirror DOM updates
+  // For sentence mode, uses CSS Highlight API or span wrapping
   let focusModeStyleEl: HTMLStyleElement | null = null;
   let lastActiveBlockIndex: number = -1;
+  let sentenceHighlight: Highlight | null = null;
+  let lastSentenceKey = '';
+
+  // Find the sentence containing the cursor position
+  function findCurrentSentence(): { start: number; end: number; text: string } | null {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+
+    const range = selection.getRangeAt(0);
+    let textNode = range.startContainer;
+
+    // Must be in a text node
+    if (textNode.nodeType !== Node.TEXT_NODE) {
+      // Try to find a text node child
+      const walker = document.createTreeWalker(textNode, NodeFilter.SHOW_TEXT);
+      textNode = walker.nextNode() as Text;
+      if (!textNode) return null;
+    }
+
+    // Get the parent paragraph/block
+    let block = textNode.parentElement;
+    while (block && !['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE'].includes(block.tagName)) {
+      block = block.parentElement;
+    }
+    if (!block) return null;
+
+    // Get all text content of the block
+    const fullText = block.textContent || '';
+
+    // Find cursor position in the block's text
+    let cursorOffset = 0;
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text)) {
+      if (node === textNode) {
+        cursorOffset += range.startOffset;
+        break;
+      }
+      cursorOffset += node.textContent?.length || 0;
+    }
+
+    // Find sentence boundaries using regex
+    // Sentence ends with . ! ? followed by space or end of string
+    const sentenceEnds = [...fullText.matchAll(/[.!?](?:\s|$)/g)];
+
+    let sentenceStart = 0;
+    let sentenceEnd = fullText.length;
+
+    for (const match of sentenceEnds) {
+      const endPos = (match.index || 0) + 1; // Position after the punctuation
+      if (endPos <= cursorOffset) {
+        sentenceStart = endPos;
+        // Skip whitespace after punctuation
+        while (sentenceStart < fullText.length && /\s/.test(fullText[sentenceStart])) {
+          sentenceStart++;
+        }
+      } else {
+        sentenceEnd = endPos;
+        break;
+      }
+    }
+
+    return {
+      start: sentenceStart,
+      end: sentenceEnd,
+      text: fullText.slice(sentenceStart, sentenceEnd).trim()
+    };
+  }
+
+  // Apply sentence-level focus using CSS Highlight API or fallback
+  function applySentenceFocus() {
+    if (!get(settings).focusMode) return;
+
+    const proseMirror = editorContainer?.querySelector('.ProseMirror');
+    if (!proseMirror) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    let textNode = range.startContainer;
+
+    // Find parent block
+    let block = textNode.nodeType === Node.TEXT_NODE ? textNode.parentElement : textNode as Element;
+    while (block && !['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE'].includes(block.tagName)) {
+      block = block.parentElement;
+    }
+    if (!block) return;
+
+    const sentence = findCurrentSentence();
+    if (!sentence) return;
+
+    // Create a unique key for this sentence to avoid unnecessary updates
+    const sentenceKey = `${block.textContent?.length}-${sentence.start}-${sentence.end}`;
+    if (sentenceKey === lastSentenceKey) return;
+    lastSentenceKey = sentenceKey;
+
+    // Try to use CSS Highlight API if available
+    if ('Highlight' in window && CSS.highlights) {
+      try {
+        // Clear previous highlight
+        CSS.highlights.delete('focus-sentence');
+
+        // Create ranges for text OUTSIDE the current sentence (to dim them)
+        const ranges: Range[] = [];
+        const fullText = block.textContent || '';
+
+        // Create range for text before sentence
+        if (sentence.start > 0) {
+          const beforeRange = createTextRange(block, 0, sentence.start);
+          if (beforeRange) ranges.push(beforeRange);
+        }
+
+        // Create range for text after sentence
+        if (sentence.end < fullText.length) {
+          const afterRange = createTextRange(block, sentence.end, fullText.length);
+          if (afterRange) ranges.push(afterRange);
+        }
+
+        if (ranges.length > 0) {
+          sentenceHighlight = new Highlight(...ranges);
+          CSS.highlights.set('focus-sentence', sentenceHighlight);
+        }
+      } catch (e) {
+        // Highlight API failed, will fall back to block-level focus
+      }
+    }
+  }
+
+  // Create a Range for a specific text range within a block
+  function createTextRange(block: Element, startOffset: number, endOffset: number): Range | null {
+    try {
+      const range = document.createRange();
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+
+      let currentOffset = 0;
+      let startNode: Text | null = null;
+      let startNodeOffset = 0;
+      let endNode: Text | null = null;
+      let endNodeOffset = 0;
+
+      let node: Text | null;
+      while ((node = walker.nextNode() as Text)) {
+        const nodeLength = node.textContent?.length || 0;
+
+        // Find start position
+        if (!startNode && currentOffset + nodeLength > startOffset) {
+          startNode = node;
+          startNodeOffset = startOffset - currentOffset;
+        }
+
+        // Find end position
+        if (currentOffset + nodeLength >= endOffset) {
+          endNode = node;
+          endNodeOffset = endOffset - currentOffset;
+          break;
+        }
+
+        currentOffset += nodeLength;
+      }
+
+      if (startNode && endNode) {
+        range.setStart(startNode, Math.max(0, startNodeOffset));
+        range.setEnd(endNode, Math.min(endNode.textContent?.length || 0, endNodeOffset));
+        return range;
+      }
+    } catch (e) {
+      // Range creation failed
+    }
+    return null;
+  }
 
   function getBlockIndex(proseMirror: Element, activeBlock: Element): number {
     // Get the index of the active block among its siblings
@@ -179,6 +351,7 @@
       // Use nth-child to target the active block
       // This CSS persists even when ProseMirror recreates the elements
       // Need high specificity to override Svelte's scoped CSS (which adds hash class)
+      // Also add CSS Highlight API styling for sentence-level focus
       focusModeStyleEl.textContent = `
         .editor-container.focus-mode .milkdown .ProseMirror > *:nth-child(${blockIndex + 1}),
         .editor-container.focus-mode .milkdown .ProseMirror > *:nth-child(${blockIndex + 1}) *,
@@ -197,8 +370,16 @@
         .editor-container.focus-mode .milkdown .ProseMirror > pre:nth-child(${blockIndex + 1}) {
           opacity: 1 !important;
         }
+
+        /* Sentence-level focus using CSS Highlight API */
+        ::highlight(focus-sentence) {
+          opacity: 0.25;
+        }
       `;
     }
+
+    // Also apply sentence-level focus within the active block
+    applySentenceFocus();
   }
 
   function startFocusModeLoop() {
@@ -207,10 +388,16 @@
 
   function stopFocusModeLoop() {
     lastActiveBlockIndex = -1;
+    lastSentenceKey = '';
     if (focusModeStyleEl) {
       focusModeStyleEl.remove();
       focusModeStyleEl = null;
     }
+    // Clear sentence highlight
+    if ('Highlight' in window && CSS.highlights) {
+      CSS.highlights.delete('focus-sentence');
+    }
+    sentenceHighlight = null;
   }
 
   // Typewriter mode - keep cursor vertically centered (only on typing)
@@ -219,9 +406,11 @@
   let currentScrollTarget = 0;
   let isTypewriterAnimating = false;
   let typewriterAnimationStartTime = 0;
+  let lastCursorY = 0;
   const TYPEWRITER_MAX_ANIMATION_MS = 500; // Stop animation after 500ms max
+  const INSTANT_SCROLL_THRESHOLD = 30; // Jump instantly if cursor moved more than 30px (about 1.5 lines)
 
-  function applyTypewriterMode() {
+  function applyTypewriterMode(forceInstant = false) {
     if (!$settings.typewriterMode) return;
 
     // Get the scroll area element
@@ -249,11 +438,20 @@
     const cursorRelativeY = rect.top - scrollAreaRect.top;
     const diff = cursorRelativeY - targetY;
 
+    // Check if cursor jumped significantly (like pressing Enter)
+    const cursorJump = Math.abs(cursorRelativeY - lastCursorY);
+    const shouldInstantScroll = forceInstant || cursorJump > INSTANT_SCROLL_THRESHOLD;
+    lastCursorY = cursorRelativeY;
+
     // Always keep cursor centered - update target with minimal threshold
     if (Math.abs(diff) > 2) {
       currentScrollTarget = scrollArea.scrollTop + diff;
 
-      if (!isTypewriterAnimating) {
+      if (shouldInstantScroll) {
+        // Instant scroll for large jumps (Enter, newline, etc.)
+        cancelTypewriterAnimation();
+        scrollArea.scrollTop = currentScrollTarget;
+      } else if (!isTypewriterAnimating) {
         typewriterAnimationStartTime = performance.now();
         animateTypewriterScroll();
       }
@@ -282,9 +480,8 @@
 
     isTypewriterAnimating = true;
 
-    // Smooth easing - move 20% of remaining distance each frame
-    // Fast enough to feel responsive, smooth enough to not jitter
-    const step = diff * 0.20;
+    // Smooth easing - move 30% of remaining distance each frame (faster than before)
+    const step = diff * 0.30;
     scrollArea.scrollTop = currentScroll + step;
 
     typewriterAnimationFrame = requestAnimationFrame(animateTypewriterScroll);
