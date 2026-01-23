@@ -39,8 +39,12 @@ function extractTitleFromContent(content: string): string | null {
         .replace(/~~(.+?)~~/g, '$1')  // Remove strikethrough
         .replace(/`(.+?)`/g, '$1')  // Remove inline code
         .replace(/\[(.+?)\]\(.+?\)/g, '$1')  // Remove links, keep text
+        .replace(/<[^>]*>/g, '')  // Remove any HTML tags
         .trim();
-      return title || null;
+      // Skip lines that are only whitespace or HTML artifacts after stripping
+      if (title && !/^[\s]*$/.test(title)) {
+        return title;
+      }
     }
   }
   return null;

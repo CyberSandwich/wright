@@ -482,6 +482,12 @@
     color: var(--color-text-primary);
   }
 
+  /* Ensure sidebar toggle is clickable above sidebar backdrop */
+  .sidebar-toggle {
+    position: relative;
+    z-index: 1001;
+  }
+
   .format-group {
     display: flex;
     align-items: center;

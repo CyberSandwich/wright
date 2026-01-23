@@ -87,6 +87,13 @@ This is a performance-critical application. Follow these guidelines:
 - Controls font family, font size, line height
 - Toggle settings: focus mode, typewriter mode, word count, etc.
 
+## Recent Fixes (January 2026)
+
+- Fixed performance issues causing high energy consumption (animation loops, throttling)
+- Fixed sidebar z-index issue (close button was covered by backdrop)
+- Fixed title extraction to handle HTML tags and empty lines
+- Updated test suite to match current UI structure
+
 ## Important Reminders
 
 **ALWAYS UPDATE THIS FILE** after making any significant changes to:
