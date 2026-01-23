@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, tick, createEventDispatcher } from 'svelte';
   import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from '@milkdown/core';
-  import { commonmark, toggleStrongCommand, toggleEmphasisCommand, wrapInHeadingCommand, toggleLinkCommand, updateLinkCommand } from '@milkdown/preset-commonmark';
+  import { commonmark, toggleStrongCommand, toggleEmphasisCommand, wrapInHeadingCommand, toggleLinkCommand, updateLinkCommand, wrapInBulletListCommand, wrapInOrderedListCommand } from '@milkdown/preset-commonmark';
   import { gfm, toggleStrikethroughCommand } from '@milkdown/preset-gfm';
   import { history } from '@milkdown/plugin-history';
   import { listener, listenerCtx } from '@milkdown/plugin-listener';
@@ -360,6 +360,18 @@
   export function toggleStrikethrough() {
     if (editorInstance) {
       editorInstance.action(callCommand(toggleStrikethroughCommand.key));
+    }
+  }
+
+  export function toggleBulletList() {
+    if (editorInstance) {
+      editorInstance.action(callCommand(wrapInBulletListCommand.key));
+    }
+  }
+
+  export function toggleOrderedList() {
+    if (editorInstance) {
+      editorInstance.action(callCommand(wrapInOrderedListCommand.key));
     }
   }
 

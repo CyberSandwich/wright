@@ -3,30 +3,28 @@ import { toggleMark } from '@milkdown/prose/commands';
 
 // Define the underline mark schema
 // Using HTML <u> tags since underline isn't part of standard markdown
-// Note: Underlines will work in the editor but aren't preserved in markdown export
-// since underline isn't a standard markdown feature
+// Underlines are preserved in the editor but may not export to pure markdown
 export const underlineSchema = $markSchema('underline', (ctx) => ({
   parseDOM: [
     { tag: 'u' },
     {
       style: 'text-decoration',
-      getAttrs: (value) => (value === 'underline') as false,
+      getAttrs: (value) => (value === 'underline') ? null : false,
     },
   ],
   toDOM: () => ['u', 0] as const,
-  // Since underline isn't standard markdown, we output as HTML inline
+  // Underline isn't standard markdown, but we handle it gracefully
   parseMarkdown: {
-    match: () => false, // Don't parse from markdown (no underline in markdown)
+    match: () => false, // Don't parse from markdown (underline not in standard markdown)
     runner: () => {}, // No-op
   },
   toMarkdown: {
     match: (mark) => mark.type.name === 'underline',
-    runner: (state, mark) => {
-      // Use withMark to handle the mark properly
-      // This outputs the text wrapped in HTML tags
-      state.withMark(mark, 'html', undefined, {
-        value: '<u>',
-      });
+    runner: (state, mark, node) => {
+      // For underline, we just output the text content without special markers
+      // The underline formatting is preserved in the editor but stripped in plain markdown export
+      // This prevents literal <u> tags from appearing in the markdown
+      state.next(node.content);
     },
   },
 }));

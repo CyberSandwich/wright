@@ -161,6 +161,14 @@
     dispatch('format', { type: 'link' });
   }
 
+  function toggleBulletList() {
+    dispatch('format', { type: 'bulletList' });
+  }
+
+  function toggleOrderedList() {
+    dispatch('format', { type: 'orderedList' });
+  }
+
   function setHeading(level: number) {
     showHeadingMenu = false;
     dispatch('format', { type: 'heading', level });
@@ -305,6 +313,34 @@
           </div>
         {/if}
       </div>
+      <button
+        class="format-btn"
+        on:mousedown|preventDefault={toggleBulletList}
+        title="Bullet List"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="9" y1="6" x2="20" y2="6"/>
+          <line x1="9" y1="12" x2="20" y2="12"/>
+          <line x1="9" y1="18" x2="20" y2="18"/>
+          <circle cx="4" cy="6" r="1.5" fill="currentColor"/>
+          <circle cx="4" cy="12" r="1.5" fill="currentColor"/>
+          <circle cx="4" cy="18" r="1.5" fill="currentColor"/>
+        </svg>
+      </button>
+      <button
+        class="format-btn"
+        on:mousedown|preventDefault={toggleOrderedList}
+        title="Numbered List"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="10" y1="6" x2="20" y2="6"/>
+          <line x1="10" y1="12" x2="20" y2="12"/>
+          <line x1="10" y1="18" x2="20" y2="18"/>
+          <text x="3" y="8" font-size="7" fill="currentColor" font-family="sans-serif">1</text>
+          <text x="3" y="14" font-size="7" fill="currentColor" font-family="sans-serif">2</text>
+          <text x="3" y="20" font-size="7" fill="currentColor" font-family="sans-serif">3</text>
+        </svg>
+      </button>
     </div>
 
     <div class="divider"></div>

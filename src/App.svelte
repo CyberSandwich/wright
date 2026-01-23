@@ -41,6 +41,10 @@
       editorRef?.openLinkPopup();
     } else if (type === 'textColor' && color !== undefined) {
       editorRef?.setTextColor(color);
+    } else if (type === 'bulletList') {
+      editorRef?.toggleBulletList();
+    } else if (type === 'orderedList') {
+      editorRef?.toggleOrderedList();
     }
   }
 
