@@ -33,7 +33,8 @@ src/
 │   └── ui.ts                    # Modal/UI state
 ├── lib/
 │   ├── db.ts                    # Dexie database interface
-│   └── stats.ts                 # Word count & reading time calculations
+│   ├── stats.ts                 # Word count & reading time calculations
+│   └── underline-plugin.ts      # Custom Milkdown plugin for underline formatting
 └── styles/
     ├── global.css               # Base styles and resets
     └── variables.css            # CSS custom properties
@@ -75,6 +76,18 @@ This is a performance-critical application. Follow these guidelines:
 - Handles typewriter mode (centered cursor scrolling)
 - Manages link popup for adding/editing hyperlinks
 - Detects and dispatches active formatting state to toolbar
+- Uses `@milkdown/preset-gfm` for strikethrough and custom `underline-plugin.ts` for underline
+
+### Focus Mode Implementation
+Focus mode dims all blocks except the active one. Key implementation details:
+- **Challenge**: ProseMirror constantly recreates DOM nodes, stripping any inline styles
+- **Solution**: Uses a dynamic `<style>` element with nth-child selectors
+- **How it works**:
+  1. `applyFocusActiveStyle()` finds the active block based on cursor position
+  2. Calculates the block's index among ProseMirror's direct children
+  3. Creates/updates a `<style>` element with CSS targeting that nth-child
+  4. CSS persists through ProseMirror DOM updates because it targets by position, not element identity
+- **Key functions**: `findActiveBlock()`, `getBlockIndex()`, `applyFocusActiveStyle()`, `startFocusModeLoop()`, `stopFocusModeLoop()`
 
 ### Documents Store (`documents.ts`)
 - Manages document CRUD operations
@@ -93,6 +106,10 @@ This is a performance-critical application. Follow these guidelines:
 - Fixed sidebar z-index issue (close button was covered by backdrop)
 - Fixed title extraction to handle HTML tags and empty lines
 - Updated test suite to match current UI structure
+- **Added strikethrough support**: Integrated `@milkdown/preset-gfm` for GFM markdown features
+- **Added underline support**: Created custom Milkdown plugin (`src/lib/underline-plugin.ts`) using `$markSchema` and `$command`
+- **Fixed Focus Mode active highlighting**: ProseMirror constantly recreates DOM nodes, which stripped inline styles. Solution uses dynamic `<style>` element with nth-child CSS selectors that persist through DOM updates
+- **Fixed Svelte store access in functions**: Use `get(settings)` from `svelte/store` to read store values in non-reactive contexts (regular functions, callbacks)
 
 ## Important Reminders
 

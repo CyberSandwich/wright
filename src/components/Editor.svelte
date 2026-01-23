@@ -2,12 +2,15 @@
   import { onMount, onDestroy, tick, createEventDispatcher } from 'svelte';
   import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from '@milkdown/core';
   import { commonmark, toggleStrongCommand, toggleEmphasisCommand, wrapInHeadingCommand, toggleLinkCommand, updateLinkCommand } from '@milkdown/preset-commonmark';
+  import { gfm, toggleStrikethroughCommand } from '@milkdown/preset-gfm';
   import { history } from '@milkdown/plugin-history';
   import { listener, listenerCtx } from '@milkdown/plugin-listener';
   import { callCommand } from '@milkdown/utils';
+  import { get } from 'svelte/store';
   import { currentDocument, currentDocumentId, updateContent } from '../stores/documents';
   import { settings } from '../stores/settings';
   import { calculateStats, debounce, formatTime, type TextStats } from '../lib/stats';
+  import { underline, toggleUnderlineCommand } from '../lib/underline-plugin';
 
   const dispatch = createEventDispatcher();
 
@@ -100,60 +103,114 @@
   }
 
   // Focus mode - dim non-active paragraphs
-  let lastActiveBlock: Element | null = null; // Cache to avoid unnecessary DOM operations
+  // Uses a dynamic <style> element with nth-child selector to persist through ProseMirror DOM updates
+  let focusModeStyleEl: HTMLStyleElement | null = null;
+  let lastActiveBlockIndex: number = -1;
 
-  function applyFocusMode() {
-    if (!editorContainer || !$settings.focusMode) return;
-
-    const proseMirror = editorContainer.querySelector('.ProseMirror');
-    if (!proseMirror) return;
-
-    const selection = window.getSelection();
-    let activeBlock: Element | null = null;
-
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-
-      // Find the active paragraph/block - start from the actual node
-      let node: Node | null = range.startContainer;
-
-      // If we're in a text node, start with parent
-      if (node.nodeType === Node.TEXT_NODE) {
-        node = node.parentNode;
-      }
-
-      while (node && node !== proseMirror) {
-        if (node instanceof Element) {
-          const tag = node.tagName.toUpperCase();
-          if (['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE', 'PRE'].includes(tag)) {
-            activeBlock = node;
-            break;
-          }
-        }
-        node = node.parentNode;
+  function getBlockIndex(proseMirror: Element, activeBlock: Element): number {
+    // Get the index of the active block among its siblings
+    const blocks = proseMirror.querySelectorAll(':scope > p, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6, :scope > ul, :scope > ol, :scope > blockquote, :scope > pre');
+    for (let i = 0; i < blocks.length; i++) {
+      if (blocks[i] === activeBlock || blocks[i].contains(activeBlock)) {
+        return i;
       }
     }
-
-    // Skip DOM updates if the active block hasn't changed
-    if (activeBlock === lastActiveBlock) return;
-
-    // Only update the classes that need to change (not all blocks)
-    if (lastActiveBlock && lastActiveBlock.isConnected) {
-      lastActiveBlock.classList.remove('focus-active');
-    }
-
-    if (activeBlock) {
-      activeBlock.classList.add('focus-active');
-    }
-
-    lastActiveBlock = activeBlock;
+    return -1;
   }
 
-  function clearFocusMode() {
-    if (lastActiveBlock && lastActiveBlock.isConnected) {
-      lastActiveBlock.classList.remove('focus-active');
+  function findActiveBlock(): Element | null {
+    if (!editorContainer) return null;
+
+    const proseMirror = editorContainer.querySelector('.ProseMirror');
+    if (!proseMirror) return null;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+
+    const range = selection.getRangeAt(0);
+    let node: Node | null = range.startContainer;
+
+    // If we're in a text node, start with parent
+    if (node.nodeType === Node.TEXT_NODE) {
+      node = node.parentNode;
     }
-    lastActiveBlock = null;
+
+    while (node && node !== proseMirror) {
+      if (node instanceof Element) {
+        const tag = node.tagName.toUpperCase();
+        if (['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'UL', 'OL', 'BLOCKQUOTE', 'PRE'].includes(tag)) {
+          return node;
+        }
+      }
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  function applyFocusActiveStyle() {
+    if (!get(settings).focusMode) return;
+
+    const proseMirror = editorContainer?.querySelector('.ProseMirror');
+    if (!proseMirror) return;
+
+    const activeBlock = findActiveBlock();
+    if (!activeBlock) return;
+
+    // Find the top-level block (direct child of ProseMirror)
+    let topLevelBlock: Element = activeBlock;
+    while (topLevelBlock.parentElement && topLevelBlock.parentElement !== proseMirror) {
+      topLevelBlock = topLevelBlock.parentElement;
+    }
+
+    const blockIndex = getBlockIndex(proseMirror, topLevelBlock);
+
+    // Only update if the index changed
+    if (blockIndex === lastActiveBlockIndex) return;
+    lastActiveBlockIndex = blockIndex;
+
+    // Create or update the style element
+    if (!focusModeStyleEl) {
+      focusModeStyleEl = document.createElement('style');
+      focusModeStyleEl.id = 'focus-mode-active-style';
+      document.head.appendChild(focusModeStyleEl);
+    }
+
+    if (blockIndex >= 0) {
+      // Use nth-child to target the active block
+      // This CSS persists even when ProseMirror recreates the elements
+      // Need high specificity to override Svelte's scoped CSS (which adds hash class)
+      focusModeStyleEl.textContent = `
+        .editor-container.focus-mode .milkdown .ProseMirror > *:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > *:nth-child(${blockIndex + 1}) *,
+        .editor-container.focus-mode .milkdown .ProseMirror > h1:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > h2:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > h3:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > h4:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > h5:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > h6:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > p:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > ul:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > ul:nth-child(${blockIndex + 1}) li,
+        .editor-container.focus-mode .milkdown .ProseMirror > ol:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > ol:nth-child(${blockIndex + 1}) li,
+        .editor-container.focus-mode .milkdown .ProseMirror > blockquote:nth-child(${blockIndex + 1}),
+        .editor-container.focus-mode .milkdown .ProseMirror > pre:nth-child(${blockIndex + 1}) {
+          opacity: 1 !important;
+        }
+      `;
+    }
+  }
+
+  function startFocusModeLoop() {
+    applyFocusActiveStyle();
+  }
+
+  function stopFocusModeLoop() {
+    lastActiveBlockIndex = -1;
+    if (focusModeStyleEl) {
+      focusModeStyleEl.remove();
+      focusModeStyleEl = null;
+    }
   }
 
   // Typewriter mode - keep cursor vertically centered (only on typing)
@@ -257,8 +314,9 @@
           selectionChangeRaf = null;
           lastSelectionChangeTime = performance.now();
           detectActiveFormats();
-          if ($settings.focusMode) {
-            applyFocusMode();
+          // Apply focus mode style when selection changes
+          if (get(settings).focusMode) {
+            applyFocusActiveStyle();
           }
         });
       }
@@ -267,10 +325,11 @@
 
     lastSelectionChangeTime = now;
     detectActiveFormats();
-    if ($settings.focusMode) {
-      applyFocusMode();
+    // Apply focus mode style when selection changes
+    if (get(settings).focusMode) {
+      applyFocusActiveStyle();
     }
-    // Note: Typewriter mode is NOT triggered here - only on typing
+    // Typewriter mode is NOT triggered here - only on typing
   }
 
   // Formatting commands - called from Toolbar via parent
@@ -293,27 +352,14 @@
   }
 
   export function toggleUnderline() {
-    if (!editorInstance || !editorContainer) return;
-    // Ensure editor is focused before using execCommand
-    const proseMirror = editorContainer.querySelector('.ProseMirror') as HTMLElement;
-    if (proseMirror) {
-      proseMirror.focus();
-      // Small delay to ensure focus is set
-      requestAnimationFrame(() => {
-        document.execCommand('underline', false);
-      });
+    if (editorInstance) {
+      editorInstance.action(callCommand(toggleUnderlineCommand.key));
     }
   }
 
   export function toggleStrikethrough() {
-    if (!editorInstance || !editorContainer) return;
-    // Ensure editor is focused before using execCommand
-    const proseMirror = editorContainer.querySelector('.ProseMirror') as HTMLElement;
-    if (proseMirror) {
-      proseMirror.focus();
-      requestAnimationFrame(() => {
-        document.execCommand('strikethrough', false);
-      });
+    if (editorInstance) {
+      editorInstance.action(callCommand(toggleStrikethroughCommand.key));
     }
   }
 
@@ -471,16 +517,16 @@
           updateContent(markdown);
           updateStats(markdown);
           triggerTypingEffect();
-          // Apply modes on content change
-          if ($settings.focusMode) {
-            requestAnimationFrame(() => applyFocusMode());
-          }
+          // Note: Focus mode is handled by its own RAF loop
+          // Apply typewriter mode on content change
           if ($settings.typewriterMode) {
             requestAnimationFrame(() => applyTypewriterMode());
           }
         });
       })
       .use(commonmark)
+      .use(gfm)
+      .use(underline)
       .use(history)
       .use(listener)
       .create();
@@ -503,12 +549,17 @@
       lastDocumentId = $currentDocumentId;
       await initEditor($currentDocument.content);
       isInitialized = true;
+      // Start focus mode loop if enabled
+      if ($settings.focusMode) {
+        startFocusModeLoop();
+      }
     }
   });
 
   onDestroy(() => {
     document.removeEventListener('selectionchange', handleSelectionChange);
     cancelTypewriterAnimation();
+    stopFocusModeLoop();
     if (selectionChangeRaf) {
       cancelAnimationFrame(selectionChangeRaf);
       selectionChangeRaf = null;
@@ -530,10 +581,10 @@
   // React to focus mode changes
   $: if (isInitialized) {
     if ($settings.focusMode) {
-      // Apply focus mode immediately when enabled
-      requestAnimationFrame(() => applyFocusMode());
+      // Start the focus mode RAF loop
+      startFocusModeLoop();
     } else {
-      clearFocusMode();
+      stopFocusModeLoop();
     }
   }
 
@@ -862,11 +913,8 @@
     transition: opacity 0.2s ease;
   }
 
-  /* Active block in focus mode */
-  .editor-container.focus-mode :global(.focus-active),
-  .editor-container.focus-mode :global(.milkdown .focus-active) {
-    opacity: 1 !important;
-  }
+  /* Note: Active block in focus mode uses inline styles via JavaScript
+     to ensure opacity: 1 is applied with highest priority */
 
   /* Link popup */
   .link-popup {
